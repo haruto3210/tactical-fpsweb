@@ -313,8 +313,6 @@ function closePauseMenu() {
 document.getElementById("homeBtn").onclick = () => {
     window.location.href = "../index.html";
 };
-document.getElementById("quitBtn").addEventListener("click", () => window.close());
-document.getElementById("pauseQuitBtn").addEventListener("click", () => window.close());
 document.getElementById("pauseResumeBtn").addEventListener("click", closePauseMenu);
 document.getElementById("pauseTitleBtn").addEventListener("click", () => {
   closePauseMenu();

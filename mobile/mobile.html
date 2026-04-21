@@ -2,9 +2,8 @@
 <html lang="ja">
  <head>
   <meta charset="utf-8">
-  <title>TACTICAL FPS — MOBILE</title>
+  <title>TACTICAL OPS — MOBILE</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
-  <link rel="icon" type="image/png" href="../icon/icon.png">
   <style>
     @supports (width: 100dvw) {
       html, body { width: 100dvw; }
@@ -1130,13 +1129,13 @@ function gameLoop(now) {
 
 // イベント登録
 document.addEventListener("keydown", e => {
-  // キーボード操作を完全無効化
-  return false;
-});
-
-document.addEventListener("keyup", e => {
-  // キーボード操作を完全無効化
-  return false;
+  if (e.key === "Escape") {
+    if (!isPaused && gameRunning) {
+      openPauseMenu();
+    } else if (isPaused) {
+      closePauseMenu();
+    }
+  }
 });
 
 document.addEventListener("mousemove", e => {
@@ -1255,12 +1254,14 @@ let touchStartY = 0;
 let isViewTouching = false;
 let touchMoved = false;
 const TOUCH_MOVE_THRESHOLD = 15;
+let touchStartTime = 0;
 
 canvas.addEventListener("touchstart", (e) => {
   if (!gameRunning || isPaused) return;
   
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
+  touchStartTime = performance.now();
   isViewTouching = true;
   touchMoved = false;
 }, { passive: false });
@@ -1268,6 +1269,7 @@ canvas.addEventListener("touchstart", (e) => {
 canvas.addEventListener("touchmove", (e) => {
   if (!isViewTouching || !gameRunning || isPaused || !e.touches.length) return;
   
+  e.preventDefault();
   const currentX = e.touches[0].clientX;
   const currentY = e.touches[0].clientY;
   
@@ -1293,15 +1295,11 @@ canvas.addEventListener("touchmove", (e) => {
 }, { passive: false });
 
 canvas.addEventListener("touchend", (e) => {
-  // タップ＆リリース（移動なし）で射撃
-  if (isViewTouching && !touchMoved && gameRunning && !isPaused) {
+  // タップ＆リリース（移動なし・短時間）で射撃
+  const touchDuration = performance.now() - touchStartTime;
+  if (isViewTouching && !touchMoved && gameRunning && !isPaused && touchDuration < 200) {
     shoot();
   }
-  isViewTouching = false;
-  touchMoved = false;
-}, { passive: false });
-
-canvas.addEventListener("touchcancel", (e) => {
   isViewTouching = false;
   touchMoved = false;
 }, { passive: false });
@@ -1369,5 +1367,5 @@ window.addEventListener("load", () => {
   requestAnimationFrame(gameLoop);
 });
   </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ef291fe857be381',t:'MTc3NjY3MTU1NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9efa1309663d5561',t:'MTc3Njc1MDI0MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

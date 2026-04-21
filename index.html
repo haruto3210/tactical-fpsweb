@@ -132,8 +132,10 @@
       clearInterval(dotTimer);
 
       const iris = document.getElementById("iris");
-      iris.style.width = "200vmax";
-      iris.style.height = "200vmax";
+
+      /* ▼ 画面全体を覆うサイズに修正（重要） */
+      iris.style.width = "300vmax";
+      iris.style.height = "300vmax";
 
       /* ▼ 1.2秒後：メニュー表示 */
       setTimeout(()=>{

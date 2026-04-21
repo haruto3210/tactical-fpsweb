@@ -27,7 +27,7 @@
       background:#000;
       border-radius:50%;
       transform:translate(-50%,-50%);
-      z-index:9998;
+      z-index:5000;
       pointer-events:none;
       transition:width 1.2s ease-out, height 1.2s ease-out;
     }
@@ -101,19 +101,19 @@
       loading.textContent = "LOADING" + ".".repeat(dots);
     },500);
 
-    /* ▼ 5秒後：アイリスアウト開始 */
+    /* ▼ 5秒後：bootScreen を先に消す（重要） */
     setTimeout(()=>{
       clearInterval(dotTimer);
 
-      const iris = document.getElementById("iris");
+      document.getElementById("bootScreen").style.display="none";
 
-      /* ▼ 画面全体を覆うサイズ（確実に開く） */
+      /* ▼ bootScreen が消えた後にアイリスアウト開始 */
+      const iris = document.getElementById("iris");
       iris.style.width = "300vmax";
       iris.style.height = "300vmax";
 
       /* ▼ 1.2秒後：メニュー表示 */
       setTimeout(()=>{
-        document.getElementById("bootScreen").style.display="none";
         document.getElementById("menu").style.opacity="1";
       },1200);
 
@@ -153,3 +153,5 @@
 
 </body>
 </html>
+
+

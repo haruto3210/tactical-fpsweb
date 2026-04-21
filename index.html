@@ -20,14 +20,15 @@
       font-family:'Courier New',monospace;text-align:center;
     }
 
-    /* ▼ アイリスアウト（円が広がる） */
-    #iris{
-      position:fixed;top:50%;left:50%;
-      width:0;height:0;
+    /* ▼ アイリスアウト（黒円が縮む方式） */
+    #irisCircle{
+      position:fixed;
+      top:50%;left:50%;
+      width:300vmax;height:300vmax;
       background:#000;
       border-radius:50%;
       transform:translate(-50%,-50%);
-      z-index:500; /* ← 重要：メニューより後ろにする */
+      z-index:9000;
       pointer-events:none;
       transition:width 1.2s ease-out, height 1.2s ease-out;
     }
@@ -37,8 +38,9 @@
       position:absolute;top:0;left:0;width:100%;height:100%;
       background:linear-gradient(135deg,#0a0a15 0%,#1a1a2e 50%,#050509 100%);
       display:flex;flex-direction:column;align-items:center;justify-content:center;
-      z-index:2000; /* ← iris より前にする */
-      opacity:0;transition:opacity 0.8s;
+      z-index:2000;
+      opacity:0;
+      transition:opacity 0.8s;
     }
 
     .btn{
@@ -75,8 +77,8 @@
     </div>
   </div>
 
-  <!-- ▼ アイリスアウト -->
-  <div id="iris"></div>
+  <!-- ▼ アイリスアウト（黒円） -->
+  <div id="irisCircle"></div>
 
   <!-- ▼ ホーム画面 -->
   <div id="menu">
@@ -102,18 +104,19 @@
       loading.textContent = "LOADING" + ".".repeat(dots);
     },500);
 
-    /* ▼ 5秒後：bootScreen を完全に消す */
+    /* ▼ 5秒後：bootScreen を消す → アイリスアウト開始 */
     setTimeout(()=>{
       clearInterval(dotTimer);
 
+      // 起動画面を消す
       document.getElementById("bootScreen").style.display="none";
 
-      /* ▼ bootScreen が消えた後にアイリスアウト開始 */
-      const iris = document.getElementById("iris");
-      iris.style.width = "300vmax";
-      iris.style.height = "300vmax";
+      // 黒円を縮める（アイリスアウト）
+      const circle = document.getElementById("irisCircle");
+      circle.style.width = "0vmax";
+      circle.style.height = "0vmax";
 
-      /* ▼ 1.2秒後：メニュー表示 */
+      // 1.2秒後：メニュー表示
       setTimeout(()=>{
         document.getElementById("menu").style.opacity="1";
       },1200);

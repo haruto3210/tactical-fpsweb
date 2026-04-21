@@ -2,10 +2,9 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <title>TACTICAL OPS — ADVANCED</title>
+  <title>TACTICAL FPS</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <!-- ▼ ファビコン -->
   <link rel="icon" type="image/png" href="icon/icon.png">
 
   <style>
@@ -15,41 +14,41 @@
       font-family:system-ui, -apple-system, "Segoe UI", sans-serif;
     }
 
-    /* ▼ ネオン電光掲示板 */
-    .marquee {
-      width: 100%;
-      padding: 12px 0;
-      overflow: hidden;
-      white-space: nowrap;
-      font-size: 20px;
-      font-weight: bold;
-      position: absolute;
-      top: 0;
-      z-index: 200;
-
-      background: rgba(0,0,0,0.6);
-      color: #00ffea;
-      text-shadow:
-        0 0 6px #00fff2,
-        0 0 12px #00e6ff,
-        0 0 20px #00c8ff,
-        0 0 30px #00aaff;
-      border-bottom: 2px solid #00eaff;
-      box-shadow: 0 0 20px #00eaff;
+    /* ▼ 起動アニメーション */
+    #bootScreen{
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      background:#000;display:flex;align-items:center;justify-content:center;
+      flex-direction:column;z-index:9999;color:#00ffea;
+      font-family:'Courier New',monospace;text-align:center;
+      animation:bootFade 2s forwards;
+    }
+    @keyframes bootFade{
+      0%{opacity:1;}
+      80%{opacity:1;}
+      100%{opacity:0;pointer-events:none;}
+    }
+    @keyframes bootText{
+      0%{opacity:0;}
+      100%{opacity:1;}
     }
 
-    .marquee span {
-      display: inline-block;
-      padding-left: 100%;
-      animation: marquee 12s linear infinite;
+    /* ▼ 電光掲示板 */
+    .marquee{
+      width:100%;padding:12px 0;overflow:hidden;white-space:nowrap;
+      font-size:20px;font-weight:bold;position:absolute;top:0;z-index:200;
+      background:rgba(0,0,0,0.6);color:#00ffea;
+      text-shadow:0 0 6px #00fff2,0 0 12px #00e6ff,0 0 20px #00c8ff,0 0 30px #00aaff;
+      border-bottom:2px solid #00eaff;box-shadow:0 0 20px #00eaff;
+    }
+    .marquee span{
+      display:inline-block;padding-left:100%;animation:marquee 12s linear infinite;
+    }
+    @keyframes marquee{
+      0%{transform:translate(0,0);}
+      100%{transform:translate(-100%,0);}
     }
 
-    @keyframes marquee {
-      0% { transform: translate(0, 0); }
-      100% { transform: translate(-100%, 0); }
-    }
-
-    /* ▼ 中央メニュー */
+    /* ▼ メニュー */
     .start-screen{
       position:absolute;top:0;left:0;width:100%;height:100%;
       background:linear-gradient(135deg,#0a0a15 0%,#1a1a2e 50%,#050509 100%);
@@ -67,25 +66,32 @@
     }
     .btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(0,255,100,0.7)}
 
-    /* ▼ ダウンロードボタン */
     .download-btn{
       background:linear-gradient(135deg,#ffaa00 0%,#ff8800 100%);
-      border-color:#ffaa00;
-      color:#000;
+      border-color:#ffaa00;color:#000;
     }
 
-    /* ▼ ゲームをやめるボタン */
     .quit-btn{
-      background:#444;
-      color:#fff;
-      border:2px solid #666;
+      background:#444;color:#fff;border:2px solid #666;
     }
   </style>
 </head>
 
 <body>
 
-  <!-- ▼ ネオン電光掲示板（閉じタグ修正済み） -->
+  <!-- ▼ 起動アニメーション -->
+  <div id="bootScreen">
+    <div style="font-size:42px;font-weight:bold;letter-spacing:3px;
+      text-shadow:0 0 10px #00eaff,0 0 25px #00eaff;">
+      TACTICAL FPS
+    </div>
+    <div id="bootSub" style="opacity:0;margin-top:20px;font-size:18px;
+      text-shadow:0 0 6px #00eaff;">
+      SYSTEM INITIALIZING...
+    </div>
+  </div>
+
+  <!-- ▼ 電光掲示板 -->
   <div class="marquee">
     <span>
       このサイトのゲームはバージョンが更新されません。最新のAPPを入手したい場合は、下のダウンロードボタンを押してください。
@@ -95,52 +101,58 @@
 
   <!-- ▼ ホーム画面 -->
   <div class="start-screen">
-    <h1 style="font-size:48px;color:#00ff64;margin-bottom:10px">TACTICAL FPSweb</h1>
+    <h1 style="font-size:48px;color:#00ff64;margin-bottom:10px">TACTICAL FPS</h1>
 
-    <!-- スタートボタン -->
     <button class="btn" onclick="startGame()">▶ スタート</button>
 
-    <!-- 最新 EXE 自動ダウンロード -->
     <a id="downloadBtn" class="btn download-btn" href="#" style="margin-top:20px;">
       最新の EXE をダウンロード
     </a>
 
-    <!-- ▼ ゲームをやめる（サイトを閉じる） -->
     <button id="quitBtn" class="btn quit-btn" style="margin-top:20px;">
       ✖ ゲームをやめる
     </button>
   </div>
 
   <script>
+    // ▼ 起動アニメーション
+    setTimeout(()=>{ 
+      document.getElementById("bootSub").style.animation="bootText 0.8s forwards";
+    },400);
+
+    setTimeout(()=>{ 
+      document.getElementById("bootScreen").style.display="none";
+    },1800);
+
     // ▼ PC / モバイル振り分け
     function startGame(){
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if(isMobile){
-        window.location.href = "mobile/mobile.html";
+        window.location.href="mobile/mobile.html";
       } else {
-        window.location.href = "PC/PC.html";
+        window.location.href="PC/PC.html";
       }
     }
 
-    // ▼ GitHub API から最新 EXE を自動取得
+    // ▼ 最新 EXE 自動取得
     fetch("https://api.github.com/repos/haruto3210/3dgame-tactical-fps/releases/latest")
-      .then(res => res.json())
-      .then(data => {
-        const exe = data.assets.find(a => a.name.endsWith(".exe"));
+      .then(res=>res.json())
+      .then(data=>{
+        const exe=data.assets.find(a=>a.name.endsWith(".exe"));
         if(exe){
-          const btn = document.getElementById("downloadBtn");
-          btn.href = exe.browser_download_url;
-          btn.setAttribute("download", "");
+          const btn=document.getElementById("downloadBtn");
+          btn.href=exe.browser_download_url;
+          btn.setAttribute("download","");
         } else {
-          document.getElementById("downloadBtn").innerText = "EXE が見つかりません";
+          document.getElementById("downloadBtn").innerText="EXE が見つかりません";
         }
       });
 
-    // ▼ ゲームをやめる（タブを閉じる or 戻る）
-    document.getElementById("quitBtn").onclick = () => {
-      window.open('', '_self');
+    // ▼ ゲームをやめる（全 OS で確実に離脱）
+    document.getElementById("quitBtn").onclick=()=>{
+      window.open('','_self');
       window.close();
-      history.back();
+      window.location.href="https://www.google.com";
     };
   </script>
 

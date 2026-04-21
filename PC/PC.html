@@ -9,6 +9,25 @@
     html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#0f0;font-family:system-ui, -apple-system, "Segoe UI", sans-serif}
     #game-container{position:relative;width:100%;height:100%;overflow:hidden}
     canvas{display:block;width:100%;height:100%;image-rendering:crisp-edges}
+   .btn-home {
+  background: linear-gradient(135deg, #00ff64 0%, #00cc50 100%);
+  border: 2px solid #00ff64;
+  color: #000;
+  padding: 12px 20px;
+  font-size: 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 90%;
+  max-width: 300px;
+  margin: 10px auto;
+  display: block;
+  text-align: center;
+  font-weight: bold;
+}
+.btn-home:active {
+  transform: scale(0.96);
+}
+
     .crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10}
     .crosshair::before,.crosshair::after{content:'';position:absolute;background:rgba(0,255,100,0.85);box-shadow:0 0 8px rgba(0,255,100,0.7), inset 0 0 4px rgba(0,255,100,0.3)}
     .crosshair::before{width:24px;height:2px;top:50%;left:50%;transform:translate(-50%,-50%)}
@@ -45,7 +64,7 @@
    <div class="damage-overlay"></div>
    <div class="hud">
     <div>
-     TACTICAL OPS
+     TACTICAL FPS-WEB PC
     </div>
     <div>
      モード: <span id="modeName">NORMAL</span>
@@ -89,7 +108,8 @@
    <audio id="bgm3" src="bgm3.mp3" loop></audio>
    <div class="start-screen" id="startScreen">
     <h1 style="font-size:48px;color:#00ff64;margin-bottom:10px">TACTICAL FPS</h1>
-    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button> <button class="btn" id="startSpeedrun">▶ スピードラン</button> <button class="btn" id="startSurvival">▶ サバイバル</button> <button class="btn" id="startWave" style="background:linear-gradient(135deg,#ffaa00 0%,#ff8800 100%);border-color:#ffaa00">⚡ ウェーブ戦</button> <button class="btn" id="startPractice" style="background:linear-gradient(135deg,#00aaff 0%,#0088dd 100%);border-color:#00aaff">▶ 射撃練習</button> <button class="btn" id="quitBtn" style="margin-top:15px;background:#444;color:#fff">✖ ゲームをやめる</button>
+    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button> <button class="btn" id="startSpeedrun">▶ スピードラン</button> <button class="btn" id="startSurvival">▶ サバイバル</button> <button class="btn" id="startWave" style="background:linear-gradient(135deg,#ffaa00 0%,#ff8800 100%);border-color:#ffaa00">⚡ ウェーブ戦</button> <button class="btn" id="startPractice" style="background:linear-gradient(135deg,#00aaff 0%,#0088dd 100%);border-color:#00aaff">▶ 射撃練習</button> <button id="homeBtn" class="btn-home">🏠 ホームに戻る</button>
+<button class="btn" id="quitBtn" style="margin-top:15px;background:#444;color:#fff">✖ ゲームをやめる</button>
    </div>
    <div class="game-over-screen" id="gameOverScreen">
     <h1 style="font-size:56px;color:#ff3333;margin-bottom:10px">ゲームオーバー</h1>
@@ -197,7 +217,9 @@ function closePauseMenu() {
   isPaused = false;
   canvas.requestPointerLock();
 }
-
+document.getElementById("homeBtn").onclick = () => {
+    window.location.href = "../index.html";
+};
 document.getElementById("quitBtn").addEventListener("click", () => window.close());
 document.getElementById("pauseQuitBtn").addEventListener("click", () => window.close());
 

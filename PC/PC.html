@@ -608,6 +608,7 @@ function reload() {
 }
 function playShootSound() {
     const s = document.getElementById("sndShoot").cloneNode();
+    s.volume = 0.5;   // ★ 追加：音量を半分にする
     s.play();
 }
 

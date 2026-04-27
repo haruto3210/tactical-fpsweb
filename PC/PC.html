@@ -104,6 +104,7 @@
    <audio id="bgm1" src="bgm1.mp3" loop></audio>
    <audio id="bgm2" src="bgm2.mp3" loop></audio>
    <audio id="bgm3" src="bgm3.mp3" loop></audio>
+   <audio id="sndShootEnemy" src="shoot.mp3"></audio>
    <div class="start-screen" id="startScreen">
     <h1 style="font-size:48px;color:#00ff64;margin-bottom:10px">TACTICAL FPS</h1>
     <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button> <button class="btn" id="startSpeedrun">▶ スピードラン</button> <button class="btn" id="startSurvival">▶ サバイバル</button> <button class="btn" id="startWave" style="background:linear-gradient(135deg,#ffaa00 0%,#ff8800 100%);border-color:#ffaa00">⚡ ウェーブ戦</button> <button class="btn" id="startPractice" style="background:linear-gradient(135deg,#00aaff 0%,#0088dd 100%);border-color:#00aaff">▶ 射撃練習</button> <button id="homeBtn" class="btn-home">🏠 ホームに戻る</button>
@@ -553,7 +554,7 @@ function shoot() {
   flash.classList.remove("active");
   void flash.offsetWidth;
   flash.classList.add("active");
-  playShootSound();
+  playEnemyShootSound();
 
   const yaw = player.yaw;
   const pitch = player.pitch;
@@ -609,6 +610,11 @@ function reload() {
 function playShootSound() {
     const s = document.getElementById("sndShoot").cloneNode();
     s.volume = 0.5;   // ★ 追加：音量を半分にする
+    s.play();
+}
+function playEnemyShootSound() {
+    const s = document.getElementById("sndShootEnemy").cloneNode();
+    s.volume = 0.35; // 敵は少し小さめにすると聞きやすい
     s.play();
 }
 

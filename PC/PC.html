@@ -553,7 +553,7 @@ function shoot() {
   flash.classList.remove("active");
   void flash.offsetWidth;
   flash.classList.add("active");
-  document.getElementById("sndShoot").play().catch(() => {});
+  playShootSound();
 
   const yaw = player.yaw;
   const pitch = player.pitch;
@@ -605,6 +605,10 @@ function reload() {
     isReloading = false;
     updateHUD();
   }, weapon.reloadTime);
+}
+function playShootSound() {
+    const s = document.getElementById("sndShoot").cloneNode();
+    s.play();
 }
 
 // ==========================================
@@ -767,7 +771,7 @@ function updateEnemies(dt) {
         vx,vy,vz,life:3.0,
         owner:enemy,damage:type.damage
       });
-      document.getElementById("sndShoot").play().catch(() => {});
+      playShootSound();
     }
   });
 }

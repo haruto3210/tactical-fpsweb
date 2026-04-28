@@ -1249,7 +1249,7 @@ document.addEventListener("keydown", e => {
 
 document.addEventListener("mousemove", e => {
   // マウス操作を完全無効化
-  if (!isMobile) return;
+  + if (!isTouchDevice) return;
   if (!gameRunning || !isPointerLocked || isPaused) return;
   player.yaw += e.movementX * 0.003;
   player.pitch -= e.movementY * 0.003;

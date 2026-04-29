@@ -623,8 +623,7 @@ function shoot() {
   flash.classList.remove("active");
   void flash.offsetWidth;
   flash.classList.add("active");
-  playShootSound();
-
+  playEnemyShootSound();
   const yaw = player.yaw;
   const pitch = player.pitch;
   const dirX = Math.sin(yaw)*Math.cos(pitch);

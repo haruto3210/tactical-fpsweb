@@ -486,7 +486,12 @@ canvas{
 <audio id="sndShootEnemy" src="enemy_shoot.mp3"></audio>
    <div class="start-screen" id="startScreen">
     <h1 style="font-size:40px;color:#00ff64;margin-bottom:10px">TACTICAL FPS-WEB MOBILE</h1>
-    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button> <button class="btn" id="startSpeedrun">▶ スピードラン</button> <button class="btn" id="startSurvival">▶ サバイバル</button> <button class="btn" id="startWave" style="background:linear-gradient(135deg,#ffaa00 0%,#ff8800 100%);border-color:#ffaa00">⚡ ウェーブ戦</button> <button class="btn" id="startPractice" style="background:linear-gradient(135deg,#00aaff 0%,#0088dd 100%);border-color:#00aaff">▶ 射撃練習</button><button id="homeBtn" class="btn-home">🏠 ホームに戻る</button>
+    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button>
+<button class="btn" id="startSpeedrun">▶ スピードラン</button>
+<button class="btn" id="startSurvival">▶ サバイバル</button>
+<button class="btn" id="startWave">⚡ ウェーブ戦</button>
+<button class="btn" id="startPractice">▶ 射撃練習</button>
+<button id="homeBtn" class="btn-home">🏠 ホームに戻る</button>
    </div>
    <div class="game-over-screen" id="gameOverScreen">
     <h1 style="font-size:48px;color:#ff3333;margin-bottom:10px">ゲームオーバー</h1>
@@ -507,6 +512,12 @@ function checkOrientation() {
   } else {
     warningDiv.classList.remove("active");
   }
+}
+function goFullscreen() {
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) elem.requestFullscreen();
+  else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+  else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
 }
 
 document.getElementById("okBtn").addEventListener("click", () => {
@@ -632,11 +643,30 @@ document.getElementById("restartBtn").addEventListener("click", () => {
   startGame(mode);
 });
 
-document.getElementById("startNormal").addEventListener("click", () => startGame("NORMAL"));
-document.getElementById("startSpeedrun").addEventListener("click", () => startGame("SPEEDRUN"));
-document.getElementById("startSurvival").addEventListener("click", () => startGame("SURVIVAL"));
-document.getElementById("startWave").addEventListener("click", () => startGame("WAVE"));
-document.getElementById("startPractice").addEventListener("click", () => startGame("PRACTICE"));
+document.getElementById("startNormal").addEventListener("click", () => {
+  goFullscreen();
+  startGame("NORMAL");
+});
+
+document.getElementById("startSpeedrun").addEventListener("click", () => {
+  goFullscreen();
+  startGame("SPEEDRUN");
+});
+
+document.getElementById("startSurvival").addEventListener("click", () => {
+  goFullscreen();
+  startGame("SURVIVAL");
+});
+
+document.getElementById("startWave").addEventListener("click", () => {
+  goFullscreen();
+  startGame("WAVE");
+});
+
+document.getElementById("startPractice").addEventListener("click", () => {
+  goFullscreen();
+  startGame("PRACTICE");
+});
 
 // 3D投影
 function project3D(x, y, z) {

@@ -681,7 +681,7 @@ function playShootSound() {
     if (!original) return; // ← null対策
 
     const s = original.cloneNode(); // 連射対応
-    s.volume = 1.0;
+    s.volume = 3.0;
     s.play();
 }
 

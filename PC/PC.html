@@ -610,15 +610,23 @@ function reload() {
   }, weapon.reloadTime);
 }
 function playShootSound() {
-    const s = document.getElementById("sndShoot").cloneNode();
-    s.volume = 0.5;   // ★ 追加：音量を半分にする
+    const original = document.getElementById("sndShootPlayer");
+    if (!original) return;
+
+    const s = original.cloneNode();
+    s.volume = 1.0;
     s.play();
 }
+
 function playEnemyShootSound() {
-    const s = document.getElementById("sndShootEnemy").cloneNode();
-    s.volume = 0.35; // 敵は少し小さめにすると聞きやすい
+    const original = document.getElementById("sndShootEnemy");
+    if (!original) return;
+
+    const s = original.cloneNode();
+    s.volume = 0.6; // 敵は少し小さめ
     s.play();
 }
+
 
 // ==========================================
 // ★ プロジェクタイル更新

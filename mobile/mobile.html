@@ -506,6 +506,15 @@ canvas{
    </div>
   </div>
   <script>
+   function resizeCanvas() {
+  const canvas = document.getElementById("gameCanvas");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", resizeCanvas);
+resizeCanvas();
+
 // 横向き警告の処理
 function checkOrientation() {
   const warningDiv = document.getElementById("orientationWarning");
@@ -688,7 +697,8 @@ function project3D(x, y, z) {
 
   const fov = canvas.height;
   return {
-    x: canvas.width/2 + (rx / rz2) * fov,
+    x: canvas.width/2 + (rx /
+                         rz2) * fov,
     y: canvas.height/2 - (ry / rz2) * fov,
     z: rz2
   };
@@ -1500,15 +1510,17 @@ document.addEventListener("keydown", e => {
 });
 
 document.addEventListener("mousemove", e => {
-  // マウス操作を完全無効化
-  if (!isMobile) return;
+  if (isMobile) return; // ← スマホはここで無効化
   if (!gameRunning || !isPointerLocked || isPaused) return;
+
   player.yaw += e.movementX * 0.003;
   player.pitch -= e.movementY * 0.003;
+
   const limit = Math.PI/2.5;
   if (player.pitch > limit) player.pitch = limit;
   if (player.pitch < -limit) player.pitch = -limit;
 });
+
 
 document.addEventListener("pointerlockchange", () => {
   isPointerLocked = document.pointerLockElement === canvas;

@@ -109,7 +109,12 @@
 
    <div class="start-screen" id="startScreen">
     <h1 style="font-size:48px;color:#00ff64;margin-bottom:10px">TACTICAL FPS</h1>
-    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button> <button class="btn" id="startSpeedrun">▶ スピードラン</button> <button class="btn" id="startSurvival">▶ サバイバル</button> <button class="btn" id="startWave" style="background:linear-gradient(135deg,#ffaa00 0%,#ff8800 100%);border-color:#ffaa00">⚡ ウェーブ戦</button> <button class="btn" id="startPractice" style="background:linear-gradient(135deg,#00aaff 0%,#0088dd 100%);border-color:#00aaff">▶ 射撃練習</button> <button id="homeBtn" class="btn-home">🏠 ホームに戻る</button>
+    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button>
+<button class="btn" id="startSpeedrun">▶ スピードラン</button>
+<button class="btn" id="startSurvival">▶ サバイバル</button>
+<button class="btn" id="startWave">⚡ ウェーブ戦</button>
+<button class="btn" id="startPractice">▶ 射撃練習</button>
+ <button id="homeBtn" class="btn-home">🏠 ホームに戻る</button>
    </div>
    <div class="game-over-screen" id="gameOverScreen">
     <p style="color:#ccc;font-family:monospace;font-size:22px;margin:10px 0">殺した人数: <span id="finalKills">0</span>人</p>
@@ -124,6 +129,13 @@
 // ==========================================
 // ★ グローバル変数・基本設定
 // ==========================================
+   function goFullscreen() {
+  const elem = document.documentElement;
+  if (elem.requestFullscreen) elem.requestFullscreen();
+  else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+  else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+}
+
 let gameRunning = false;
 let mode = "NORMAL";
 let isPaused = false;
@@ -249,11 +261,30 @@ document.getElementById("restartBtn").addEventListener("click", () => {
 // ==========================================
 // ★ ボタンリスナー
 // ==========================================
-document.getElementById("startNormal").addEventListener("click", () => startGame("NORMAL"));
-document.getElementById("startSpeedrun").addEventListener("click", () => startGame("SPEEDRUN"));
-document.getElementById("startSurvival").addEventListener("click", () => startGame("SURVIVAL"));
-document.getElementById("startWave").addEventListener("click", () => startGame("WAVE"));
-document.getElementById("startPractice").addEventListener("click", () => startGame("PRACTICE"));
+document.getElementById("startNormal").addEventListener("click", () => {
+  goFullscreen();
+  startGame("NORMAL");
+});
+
+document.getElementById("startSpeedrun").addEventListener("click", () => {
+  goFullscreen();
+  startGame("SPEEDRUN");
+});
+
+document.getElementById("startSurvival").addEventListener("click", () => {
+  goFullscreen();
+  startGame("SURVIVAL");
+});
+
+document.getElementById("startWave").addEventListener("click", () => {
+  goFullscreen();
+  startGame("WAVE");
+});
+
+document.getElementById("startPractice").addEventListener("click", () => {
+  goFullscreen();
+  startGame("PRACTICE");
+});
 
 // ==========================================
 // ★ 3D投影

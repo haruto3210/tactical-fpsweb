@@ -678,18 +678,19 @@ function reload() {
 }
 function playShootSound() {
     const original = document.getElementById("sndShootPlayer");
-    if (!original) return;
+    if (!original) return; // ← null対策
 
-    const s = original.cloneNode();
+    const s = original.cloneNode(); // 連射対応
     s.volume = 1.0;
     s.play();
 }
+
 function playEnemyShootSound() {
     const original = document.getElementById("sndShootEnemy");
     if (!original) return;
 
     const s = original.cloneNode();
-    s.volume = 0.6; // 敵は少し小さめ
+    s.volume = 0.6;
     s.play();
 }
 

@@ -49,9 +49,10 @@
 @media (orientation: portrait) {
   .orientation-warning.active { display: flex !important; }
 }
-</style>
 
-<style>
+/* =========================
+   基本スタイル（元のまま）
+   ========================= */
 *{margin:0;padding:0;box-sizing:border-box}
 
 /* ← 最重要：100% → 100dvh に修正 */
@@ -181,18 +182,19 @@ canvas{
   100%{opacity:0}
 }
 
-/* ← ここも100dvhに修正 */
+/* =========================
+   lookPad（視点操作） — 元のまま
+   ========================= */
 #lookPad{
   position:fixed;
   right:0;
   top:0;
   width:50%;
   height:100dvh;
-  z-index:9999; /* ← ここを上げる */
+  z-index:9999; /* ← lookPad は右半分を占めるが z-index は控えめ */
   background:rgba(0,0,0,0);
   pointer-events:auto;
 }
-
 
 /* ← 最重要：start-screen を100dvh に修正 */
 .start-screen{
@@ -274,22 +276,29 @@ canvas{
   padding:20px;
 }
 
+/* =========================
+   修正ブロック：mobile-controls / action-buttons / action-btn
+   lookPad より上に出してタッチを確実に受ける
+   ========================= */
+
+/* mobile-controls を画面下に固定し、lookPad より上に出す */
 .mobile-controls{
-  position:absolute;
-  bottom:0;
-  left:0;
-  width:100%;
-  height:auto;
-  z-index:20;
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  padding:20px 10px;
-  gap:15px;
-  padding-left:20px;
-  padding-right:20px;
+  position: fixed;      /* absolute → fixed にして常に画面下に表示 */
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+  z-index: 20001;       /* lookPad(9999) より上 */
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 20px 10px;
+  gap: 15px;
+  pointer-events: auto; /* タッチを受け取る */
+  box-sizing: border-box;
 }
 
+/* control-pad はそのまま（左側 D-Pad） */
 .control-pad{
   width:120px;
   height:120px;
@@ -327,14 +336,18 @@ canvas{
 .dpad-btn.left{left:5px;top:50%;transform:translateY(-50%)}
 .dpad-btn.right{right:5px;top:50%;transform:translateY(-50%)}
 
+/* action-buttons を確実に最前面に */
 .action-buttons{
   display:flex;
   gap:10px;
   flex-wrap:wrap;
   justify-content:flex-end;
   pointer-events:auto;
+  position: relative;
+  z-index: 20002;
 }
 
+/* 個々のボタンはフローを壊さない（position を指定しない） */
 .action-btn{
   width:50px;
   height:50px;
@@ -351,9 +364,8 @@ canvas{
   user-select:none;
   touch-action:manipulation;
   color:#000;
-
-  /* ★ 修正：relative を削除 */
-  z-index:20000; /* lookPad より上 */
+  z-index:20003; /* 念のため高めに */
+  /* position は指定しないこと（fixed を残さない） */
 }
 
 .action-btn:active{
@@ -424,6 +436,7 @@ canvas{
   transform:scale(0.92);
   background:rgba(0,255,100,0.2);
 }
+
 </style>
 
 <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>

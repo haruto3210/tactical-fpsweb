@@ -436,51 +436,15 @@ canvas{
   z-index:100000;
 }
 
-.pause-btn:active{
-  transform:scale(0.92);
-  background:rgba(0,255,100,0.2);
-}
-/* --- 左寄せパッチ（そのまま追記） --- */
-
-/* mobile-controls を左端に固定して縦レイアウトにする */
-.mobile-controls {
+/* pause-btn を JS でミニマップの左に配置するためのベース */
+.pause-btn {
   position: fixed;
-  left: 12px;            /* 画面左からの余白 */
-  bottom: 12px;          /* 下からの余白 */
-  right: auto;           /* 右指定を解除 */
-  width: auto;
-  max-width: 220px;      /* 必要に応じて調整 */
-  z-index: 20001;
-  display: flex;
-  flex-direction: row;   /* D-Pad とアクションを横並びに */
-  align-items: flex-end;
-  gap: 12px;
-  padding: 10px;
-  pointer-events: auto;
-  box-sizing: border-box;
-}
-
-/* control-pad を左、action-buttons を右に配置（順序はCSSで制御） */
-.control-pad { order: 0; }
-
-/* アクション群を D-Pad の右側に縦並びにする */
-.action-buttons {
-  order: 1;
-  display: flex;
-  flex-direction: column; /* 縦並び */
-  gap: 8px;
-  align-items: center;
-  justify-content: flex-end;
-  pointer-events: auto;
-  margin-left: 6px;
-}
-
-/* アクションボタンのサイズ微調整（必要なら） */
-.action-btn {
-  width: 56px;
-  height: 56px;
-  font-size: 12px;
-  z-index: 20003;
+  top: 20px;
+  right: auto;           /* JS が設定するので CSS の right は無効化 */
+  left: auto;
+  transform: none;       /* JS で位置調整する場合は transform を使わない */
+  z-index: 100000;
+  transition: right 0.12s ease, top 0.12s ease;
 }
 
 /* モバイル小画面向けの調整 */
@@ -1470,6 +1434,36 @@ function gameLoop(now) {
   drawMinimap();
   requestAnimationFrame(gameLoop);
 }
+
+// ミニマップ幅（drawMinimap 内で使っている値に合わせる）
+const MINIMAP_SIZE = 120; // ミニマップのサイズを変えたらここも合わせてください
+const MINIMAP_MARGIN = 20; // drawMinimap で使っている余白（canvas.width - size - 20）
+const PAUSE_GAP = 8;       // ミニマップとボタンの間隔（任意で調整）
+
+function positionPauseButton() {
+  const pauseBtn = document.getElementById('pauseBtn');
+  if (!pauseBtn) return;
+
+  // 右端からミニマップ左端までの距離 = MINIMAP_SIZE + MINIMAP_MARGIN
+  const rightOffset = MINIMAP_SIZE + MINIMAP_MARGIN + PAUSE_GAP;
+
+  // ウィンドウ幅が小さくてボタンが画面外に出る場合は最小右余白を確保
+  const maxRight = Math.max(rightOffset, 12); // 12px は最低余白
+
+  // top はミニマップの top と揃える（drawMinimap は top:20）
+  const topOffset = 20;
+
+  pauseBtn.style.right = `${maxRight}px`;
+  pauseBtn.style.top = `${topOffset}px`;
+}
+
+// 初回配置とリサイズ時に再配置
+window.addEventListener('load', () => { positionPauseButton(); });
+window.addEventListener('resize', () => { positionPauseButton(); });
+
+// ゲーム開始でミニマップサイズを変える可能性があるなら startGame の最後にも呼ぶ
+// 例: startGame(...) の最後に positionPauseButton(); を追加してください
+
 </script>
 </body>
 </html>

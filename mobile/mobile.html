@@ -440,6 +440,55 @@ canvas{
   transform:scale(0.92);
   background:rgba(0,255,100,0.2);
 }
+/* --- 左寄せパッチ（そのまま追記） --- */
+
+/* mobile-controls を左端に固定して縦レイアウトにする */
+.mobile-controls {
+  position: fixed;
+  left: 12px;            /* 画面左からの余白 */
+  bottom: 12px;          /* 下からの余白 */
+  right: auto;           /* 右指定を解除 */
+  width: auto;
+  max-width: 220px;      /* 必要に応じて調整 */
+  z-index: 20001;
+  display: flex;
+  flex-direction: row;   /* D-Pad とアクションを横並びに */
+  align-items: flex-end;
+  gap: 12px;
+  padding: 10px;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+/* control-pad を左、action-buttons を右に配置（順序はCSSで制御） */
+.control-pad { order: 0; }
+
+/* アクション群を D-Pad の右側に縦並びにする */
+.action-buttons {
+  order: 1;
+  display: flex;
+  flex-direction: column; /* 縦並び */
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: auto;
+  margin-left: 6px;
+}
+
+/* アクションボタンのサイズ微調整（必要なら） */
+.action-btn {
+  width: 56px;
+  height: 56px;
+  font-size: 12px;
+  z-index: 20003;
+}
+
+/* モバイル小画面向けの調整 */
+@media (max-width:600px){
+  .mobile-controls { left: 8px; bottom: 8px; gap:8px; padding:8px; max-width:180px; }
+  .action-btn { width:48px; height:48px; font-size:11px; }
+  .control-pad { width:90px; height:90px; }
+}
 
 /* 初期はホーム（スタート画面）でボタンを隠す（JS でも制御します） */
 #mobileControls {

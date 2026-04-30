@@ -508,6 +508,8 @@ canvas{
    </div>
   </div>
   <script>
+   const lookPad = document.getElementById("lookPad");
+
    function resizeCanvas() {
   const canvas = document.getElementById("gameCanvas");
   canvas.width = window.innerWidth;
@@ -1652,7 +1654,7 @@ let lpStartTime = 0;
 let lpMoved = false;
 
 // ★ lookPad は 1 回だけ定義
-const lookPad = document.getElementById("lookPad");
+
 
 lookPad.addEventListener("touchstart", (e) => {
   if (!gameRunning || isPaused) return;

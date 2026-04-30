@@ -1605,7 +1605,7 @@ const setupDpadButton = (id, keyStart, keyEnd) => {
     keyEnd();
   }, { passive: false });
   
- 
+ }
 
 // D-Padボタン設定
 setupDpadButton("btnUp", () => { keys.w = true; }, () => { keys.w = false; });
@@ -1620,10 +1620,6 @@ fireBtn.addEventListener("touchstart", (e) => {
   e.stopPropagation();
   if (gameRunning && !isPaused) shoot();
 }, { passive: false });
-fireBtn.addEventListener("mousedown", (e) => {
-  e.preventDefault();
-  if (gameRunning && !isPaused) shoot();
-});
 
 // 装填ボタン
 const reloadBtn = document.getElementById("reloadBtn");
@@ -1632,10 +1628,6 @@ reloadBtn.addEventListener("touchstart", (e) => {
   e.stopPropagation();
   if (gameRunning && !isPaused) reload();
 }, { passive: false });
-reloadBtn.addEventListener("mousedown", (e) => {
-  e.preventDefault();
-  if (gameRunning && !isPaused) reload();
-});
 
 // 武器切り替えボタン
 const weaponBtn = document.getElementById("weaponBtn");

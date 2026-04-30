@@ -1648,15 +1648,6 @@ weaponBtn.addEventListener("touchstart", (e) => {
     updateHUD();
   }
 }, { passive: false });
-weaponBtn.addEventListener("mousedown", (e) => {
-  e.preventDefault();
-  if (gameRunning) {
-    currentWeaponIndex = (currentWeaponIndex + 1) % weapons.length;
-    ammo = Math.min(ammo, weapons[currentWeaponIndex].maxAmmo);
-    updateHUD();
-  }
-});
-
 
 
 // 右側視点スワイプパッド

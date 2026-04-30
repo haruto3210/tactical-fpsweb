@@ -354,8 +354,8 @@ canvas{
   touch-action:manipulation;
   color:#000;
 
-  position: relative;   /* ← これが無いと z-index が効かない */
-  z-index: 20000;       /* ← lookPad より上にする */
+  /* ★ 修正：relative を削除 */
+  z-index:20000; /* lookPad より上 */
 }
 
 .action-btn:active{
@@ -416,21 +416,14 @@ canvas{
   align-items:center;
   justify-content:center;
   touch-action:manipulation;
-}
 
+  /* ★ 最上位 */
+  z-index:100000;
+}
 
 .pause-btn:active{
   transform:scale(0.92);
   background:rgba(0,255,100,0.2);
-}
-.action-btn {
-  position: fixed;
-  z-index: 20000;
-}
-
-.pause-btn {
-  position: fixed;
-  z-index: 100000; /* ← pause は最上位でOK */
 }
 
 </style>

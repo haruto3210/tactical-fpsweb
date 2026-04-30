@@ -1737,9 +1737,14 @@ lookPad.addEventListener("touchend", (e) => {
   e.preventDefault();
   e.stopPropagation();
 
+  // ★ ボタンを触っていたらタップ射撃を無効化
+  if (e.target.closest(".action-btn")) {
+    isLookPadTouching = false;
+    return;
+  }
+
   const duration = performance.now() - lpStartTime;
 
-  // ★ タップ射撃（移動なし・短時間）
   if (!lpMoved && duration < 180 && gameRunning && !isPaused) {
     shoot();
   }
@@ -1747,25 +1752,7 @@ lookPad.addEventListener("touchend", (e) => {
   isLookPadTouching = false;
 }, { passive: false });
 
-lookPad.addEventListener("touchcancel", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  isLookPadTouching = false;
-}, { passive: false });
 
-lookPad.addEventListener("touchend", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  const duration = performance.now() - lpStartTime;
-
-  // ★ タップ射撃（移動なし・短時間）
-  if (!lpMoved && duration < 180 && gameRunning && !isPaused) {
-    shoot();
-  }
-
-  isLookPadTouching = false;
-}, { passive: false });
 
 window.addEventListener("resize", resize);
 

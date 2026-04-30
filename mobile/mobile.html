@@ -605,22 +605,20 @@ lookPad.addEventListener("touchstart", e => {
   if (!gameRunning || isPaused) return;
 
   const t = e.touches[0];
-  lookPadStartX = t.clientX;
-  lookPadStartY = t.clientY;
-  lookPadTapStart = performance.now();
-  lookPadMoved = false;
+  lpStartX = t.clientX;
+  lpStartY = t.clientY;
+  lpStartTime = performance.now();
+  lpMoved = false;
 }, { passive: false });
 
 lookPad.addEventListener("touchmove", e => {
   if (!gameRunning || isPaused) return;
 
   const t = e.touches[0];
-  const dx = t.clientX - lookPadStartX;
-  const dy = t.clientY - lookPadStartY;
+  const dx = t.clientX - lpStartX;
+  const dy = t.clientY - lpStartY;
 
-  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-    lookPadMoved = true;
-  }
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) lpMoved = true;
 
   // 視点操作
   player.yaw += dx * 0.005;
@@ -630,15 +628,15 @@ lookPad.addEventListener("touchmove", e => {
   if (player.pitch > limit) player.pitch = limit;
   if (player.pitch < -limit) player.pitch = -limit;
 
-  lookPadStartX = t.clientX;
-  lookPadStartY = t.clientY;
+  lpStartX = t.clientX;
+  lpStartY = t.clientY;
 }, { passive: false });
 
 lookPad.addEventListener("touchend", e => {
-  const duration = performance.now() - lookPadTapStart;
+  const duration = performance.now() - lpStartTime;
 
-  // タップ射撃（移動なし・短時間）
-  if (!lookPadMoved && duration < 180 && gameRunning && !isPaused) {
+  // ★ タップ射撃（移動なし・短時間）
+  if (!lpMoved && duration < 180 && gameRunning && !isPaused) {
     shoot();
   }
 }, { passive: false });
@@ -1594,12 +1592,6 @@ const setupDpadButton = (id, keyStart, keyEnd) => {
     keyStart();
   }, { passive: false });
   
-  // マウスダウン
-  el.addEventListener("mousedown", (e) => {
-    e.preventDefault();
-    keyStart();
-  });
-  
   // タッチ終了
   el.addEventListener("touchend", (e) => {
     e.preventDefault();
@@ -1613,17 +1605,7 @@ const setupDpadButton = (id, keyStart, keyEnd) => {
     keyEnd();
   }, { passive: false });
   
-  // マウスアップ
-  el.addEventListener("mouseup", (e) => {
-    e.preventDefault();
-    keyEnd();
-  });
-  
-  // マウスリーブ
-  el.addEventListener("mouseleave", (e) => {
-    keyEnd();
-  });
-};
+ 
 
 // D-Padボタン設定
 setupDpadButton("btnUp", () => { keys.w = true; }, () => { keys.w = false; });

@@ -1657,61 +1657,7 @@ weaponBtn.addEventListener("mousedown", (e) => {
   }
 });
 
-// スワイプ視点操作＋タップ射撃
-let touchStartX = 0;
-let touchStartY = 0;
-let isViewTouching = false;
-let touchMoved = false;
-const TOUCH_MOVE_THRESHOLD = 15;
-let touchStartTime = 0;
 
-canvas.addEventListener("touchstart", (e) => {
-  if (!gameRunning || isPaused) return;
-  
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
-  touchStartTime = performance.now();
-  isViewTouching = true;
-  touchMoved = false;
-}, { passive: false });
-
-canvas.addEventListener("touchmove", (e) => {
-  if (!isViewTouching || !gameRunning || isPaused || !e.touches.length) return;
-  
-  e.preventDefault();
-  const currentX = e.touches[0].clientX;
-  const currentY = e.touches[0].clientY;
-  
-  const deltaX = currentX - touchStartX;
-  const deltaY = currentY - touchStartY;
-  
-  // タッチ移動量がしきい値を超えたら視点操作
-  if (Math.abs(deltaX) > TOUCH_MOVE_THRESHOLD || Math.abs(deltaY) > TOUCH_MOVE_THRESHOLD) {
-    touchMoved = true;
-  }
-  
-  if (touchMoved) {
-    player.yaw += deltaX * 0.005;
-    player.pitch -= deltaY * 0.005;
-    
-    const limit = Math.PI / 2.5;
-    if (player.pitch > limit) player.pitch = limit;
-    if (player.pitch < -limit) player.pitch = -limit;
-    
-    touchStartX = currentX;
-    touchStartY = currentY;
-  }
-}, { passive: false });
-
-canvas.addEventListener("touchend", (e) => {
-  // タップ＆リリース（移動なし・短時間）で射撃
-  const touchDuration = performance.now() - touchStartTime;
-  if (isViewTouching && !touchMoved && gameRunning && !isPaused && touchDuration < 200) {
-    shoot();
-  }
-  isViewTouching = false;
-  touchMoved = false;
-}, { passive: false });
 
 // 右側視点スワイプパッド
 let lookPadTouchStartX = 0;

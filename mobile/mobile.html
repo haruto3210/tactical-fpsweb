@@ -353,7 +353,11 @@ canvas{
   user-select:none;
   touch-action:manipulation;
   color:#000;
+
+  position: relative;   /* ← これが無いと z-index が効かない */
+  z-index: 20000;       /* ← lookPad より上にする */
 }
+
 .action-btn:active{
   transform:scale(0.95);
 }

@@ -190,10 +190,11 @@ canvas{
   top:0;
   width:50%;
   height:100dvh;
-  z-index:15;
+  z-index:9999; /* ← ここを上げる */
   background:rgba(0,0,0,0);
   pointer-events:auto;
 }
+
 
 /* ← 最重要：start-screen を100dvh に修正 */
 .start-screen{
@@ -593,6 +594,55 @@ let currentWeaponIndex = 0;
 let ammo = weapons[0].maxAmmo;
 let lastShotTime = 0;
 let isReloading = false;
+
+
+   let lookPadTapStart = 0;
+let lookPadMoved = false;
+let lookPadStartX = 0;
+let lookPadStartY = 0;
+
+lookPad.addEventListener("touchstart", e => {
+  if (!gameRunning || isPaused) return;
+
+  const t = e.touches[0];
+  lookPadStartX = t.clientX;
+  lookPadStartY = t.clientY;
+  lookPadTapStart = performance.now();
+  lookPadMoved = false;
+}, { passive: false });
+
+lookPad.addEventListener("touchmove", e => {
+  if (!gameRunning || isPaused) return;
+
+  const t = e.touches[0];
+  const dx = t.clientX - lookPadStartX;
+  const dy = t.clientY - lookPadStartY;
+
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+    lookPadMoved = true;
+  }
+
+  // 視点操作
+  player.yaw += dx * 0.005;
+  player.pitch -= dy * 0.005;
+
+  const limit = Math.PI / 2.5;
+  if (player.pitch > limit) player.pitch = limit;
+  if (player.pitch < -limit) player.pitch = -limit;
+
+  lookPadStartX = t.clientX;
+  lookPadStartY = t.clientY;
+}, { passive: false });
+
+lookPad.addEventListener("touchend", e => {
+  const duration = performance.now() - lookPadTapStart;
+
+  // タップ射撃（移動なし・短時間）
+  if (!lookPadMoved && duration < 180 && gameRunning && !isPaused) {
+    shoot();
+  }
+}, { passive: false });
+
 
 // 敵タイプ
 const ENEMY_TYPES = {

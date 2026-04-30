@@ -5,6 +5,10 @@
 <title>TACTICAL OPS — MOBILE</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
 <link rel="icon" type="image/png" href="icon.png">
+
+<!-- =========================
+     CSS（修正版・全文）
+     ========================= -->
 <style>
 @supports (width: 100dvw) { html, body { width: 100dvw; } }
 
@@ -437,6 +441,10 @@ canvas{
   background:rgba(0,255,100,0.2);
 }
 
+/* 初期はホーム（スタート画面）でボタンを隠す（JS でも制御します） */
+#mobileControls {
+  display: none;
+}
 </style>
 
 <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
@@ -480,6 +488,7 @@ canvas{
     <div id="bossHpBox" style="display:none;color:#ff6600"> ボス体力: <span id="bossHp">0</span></div>
   </div>
 
+  <!-- mobileControls has both id and class for CSS/JS targeting -->
   <div class="mobile-controls" id="mobileControls">
     <div class="control-pad">
       <div class="dpad-btn up" id="btnUp"> ▲ </div>
@@ -534,7 +543,46 @@ canvas{
   </div>
 </div>
 
+<!-- =========================
+     JavaScript（修正版・全文）
+     ========================= -->
 <script>
+/* -------------------------
+   初期 DOM 参照と UI 切替ユーティリティ
+   ------------------------- */
+const mobileControlsEl = document.getElementById("mobileControls");
+const startScreenEl = document.getElementById("startScreen");
+const gameOverScreenEl = document.getElementById("gameOverScreen");
+const pauseScreenEl = document.getElementById("pauseScreen");
+
+// 初期状態：ホーム（スタート画面）では非表示（CSS でも隠している）
+if (mobileControlsEl) mobileControlsEl.style.display = "none";
+
+function showStartScreen() {
+  if (startScreenEl) startScreenEl.style.display = "flex";
+  if (gameOverScreenEl) gameOverScreenEl.style.display = "none";
+  if (pauseScreenEl) pauseScreenEl.style.display = "none";
+  if (mobileControlsEl) mobileControlsEl.style.display = "none";
+  gameRunning = false;
+}
+
+function showGameControls() {
+  if (startScreenEl) startScreenEl.style.display = "none";
+  if (gameOverScreenEl) gameOverScreenEl.style.display = "none";
+  if (pauseScreenEl) pauseScreenEl.style.display = "none";
+  if (mobileControlsEl) mobileControlsEl.style.display = "flex";
+  gameRunning = true;
+}
+
+function hideGameControlsForGameOver() {
+  if (mobileControlsEl) mobileControlsEl.style.display = "none";
+  if (gameOverScreenEl) gameOverScreenEl.style.display = "flex";
+  gameRunning = false;
+}
+
+/* -------------------------
+   ゲーム変数・初期化（元のまま）
+   ------------------------- */
 const lookPad = document.getElementById("lookPad");
 const pauseBtn = document.getElementById("pauseBtn");
 
@@ -638,6 +686,9 @@ let isLookPadTouching = false;
 let lpStartTime = 0;
 let lpMoved = false;
 
+/* -------------------------
+   D-Pad / Action ボタン設定
+   ------------------------- */
 // D-Pad setup helper
 const setupDpadButton = (id, keyStart, keyEnd) => {
   const el = document.getElementById(id);
@@ -664,7 +715,9 @@ const weaponBtn = document.getElementById("weaponBtn");
 weaponBtn.addEventListener("touchstart", (e) => { e.preventDefault(); e.stopPropagation(); if (gameRunning) { currentWeaponIndex = (currentWeaponIndex + 1) % weapons.length; ammo = Math.min(ammo, weapons[currentWeaponIndex].maxAmmo); updateHUD(); } }, { passive: false });
 weaponBtn.addEventListener("touchend", (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false });
 
-// lookPad handlers
+/* -------------------------
+   lookPad handlers
+   ------------------------- */
 lookPad.addEventListener("touchstart", (e) => {
   if (!gameRunning || isPaused) return;
   e.preventDefault();
@@ -709,7 +762,9 @@ lookPad.addEventListener("touchend", (e) => {
   isLookPadTouching = false;
 }, { passive: false });
 
-// UI helpers and game logic (kept intact, only small fixes where necessary)
+/* -------------------------
+   ゲームロジック（抜粋・元のまま）
+   ------------------------- */
 function project3D(x, y, z) {
   const dx = x - player.x;
   const dy = y - player.y;
@@ -778,6 +833,9 @@ function checkHealPickup() {
   }
 }
 
+/* -------------------------
+   描画・射撃・サウンド等（元のまま）
+   ------------------------- */
 function drawHealItem(item) {
   const p = project3D(item.x, item.y, item.z);
   if (!p || p.z <= 0) return null;
@@ -898,13 +956,6 @@ const ENEMY_TYPES = {
   HEAVY: { name:"ヘビー", health:200, speed:0.02, color:"#ff6666", fireRate:2000, damage:15 },
   BOSS: { name:"ボス", health:800, speed:0.04, color:"#ff8800", fireRate:300, damage:20 }
 };
-
-// The rest of the original script continues here exactly as in the source,
-// including functions: updateProjectiles, updateEnemies, drawFloorAndSky, drawWall,
-// drawProjectiles, drawMinimap, updatePlayer, updateHUD, startGame, endGame,
-// resetGameState, gameLoop, event listeners for keyboard/mouse, and load handlers.
-// For clarity and to keep the file self-contained, the original code is preserved
-// with only the fixes applied above (action button selector, pause screen id, CSS changes).
 
 // Minimal implementations to ensure the page runs (these are the original functions from the repo)
 function shoot() {
@@ -1190,7 +1241,13 @@ function initMap(){
   }
 }
 
+/* -------------------------
+   startGame / endGame 等の UI 統合
+   ------------------------- */
 function startGame(selectedMode) {
+  // show controls and hide start screen
+  showGameControls();
+
   mode = selectedMode;
   health = 100;
   kills = 0;
@@ -1235,6 +1292,9 @@ function startGame(selectedMode) {
 }
 
 function endGame() {
+  // hide controls and show game over
+  hideGameControlsForGameOver();
+
   gameRunning = false;
   document.exitPointerLock?.();
   document.getElementById("finalKills").textContent = kills;
@@ -1257,6 +1317,9 @@ function closePauseMenu() {
   if (!isTouchDevice) canvas.requestPointerLock();
 }
 
+/* -------------------------
+   UI イベントバインド
+   ------------------------- */
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     if (!isPaused && gameRunning) openPauseMenu();
@@ -1270,7 +1333,7 @@ document.getElementById("pauseTitleBtn").addEventListener("click", () => {
   closePauseMenu();
   document.getElementById("gameOverScreen").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
-  gameRunning = false;
+  showStartScreen();
   resetGameState();
   document.getElementById("bgm1").volume = 0.25;
   document.getElementById("bgm1").play().catch(()=>{});
@@ -1278,7 +1341,7 @@ document.getElementById("pauseTitleBtn").addEventListener("click", () => {
 document.getElementById("backToTitleBtn").addEventListener("click", () => {
   document.getElementById("gameOverScreen").style.display = "none";
   document.getElementById("startScreen").style.display = "flex";
-  gameRunning = false;
+  showStartScreen();
   resetGameState();
   document.getElementById("bgm1").volume = 0.25;
   document.getElementById("bgm1").play().catch(()=>{});
@@ -1305,7 +1368,7 @@ document.addEventListener("mousemove", e => {
 
 document.addEventListener("pointerlockchange", () => { isPointerLocked = document.pointerLockElement === canvas; });
 
-document.getElementById("mobileControls").style.display = "flex";
+document.getElementById("mobileControls").style.display = "none";
 
 function resize(){ canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
 window.addEventListener("resize", resize);

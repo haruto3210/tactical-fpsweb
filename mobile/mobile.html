@@ -547,6 +547,11 @@ pauseBtn.addEventListener("touchstart", (e) => {
   document.getElementById("pause-screen").style.display = "flex";
 }, { passive: false });
 
+pauseBtn.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  e.stopPropagation(); // ← これが必須
+}, { passive: false });
+
    function resizeCanvas() {
   const canvas = document.getElementById("gameCanvas");
   canvas.width = window.innerWidth;
@@ -1660,6 +1665,12 @@ fireBtn.addEventListener("touchstart", (e) => {
   if (gameRunning && !isPaused) shoot();
 }, { passive: false });
 
+fireBtn.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  e.stopPropagation(); // ← これが必須
+}, { passive: false });
+
+
 // 装填ボタン
 const reloadBtn = document.getElementById("reloadBtn");
 reloadBtn.addEventListener("touchstart", (e) => {
@@ -1667,6 +1678,12 @@ reloadBtn.addEventListener("touchstart", (e) => {
   e.stopPropagation();
   if (gameRunning && !isPaused) reload();
 }, { passive: false });
+
+reloadBtn.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  e.stopPropagation(); // ← 必須
+}, { passive: false });
+
 
 // 武器切り替えボタン
 const weaponBtn = document.getElementById("weaponBtn");
@@ -1679,6 +1696,12 @@ weaponBtn.addEventListener("touchstart", (e) => {
     updateHUD();
   }
 }, { passive: false });
+
+weaponBtn.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  e.stopPropagation(); // ← 必須
+}, { passive: false });
+
 
 
 // 右側視点スワイプパッド

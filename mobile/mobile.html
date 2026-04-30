@@ -423,10 +423,13 @@ canvas{
   transform:scale(0.92);
   background:rgba(0,255,100,0.2);
 }
+/* === 重なりゼロ版：ボタンを lookPad より上に固定 === */
+
 .action-btn,
 .pause-btn {
-  position: relative;   /* z-index を有効化 */
-  z-index: 20000;       /* lookPad(9999) より上 */
+  position: fixed;   /* ← relative ではダメ。fixed にする */
+  z-index: 20000;    /* ← lookPad(9999) より上 */
+  pointer-events: auto;
 }
 
 </style>

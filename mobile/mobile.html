@@ -396,7 +396,7 @@ canvas{
   .action-btn{width:45px;height:45px;font-size:10px}
 }
 
- .pause-btn{
+.pause-btn{
   position:fixed;
   top:15px;
   right:15px;
@@ -411,9 +411,10 @@ canvas{
   display:flex;
   align-items:center;
   justify-content:center;
-  z-index: 100000; /* ← 最上位にする */
+  z-index: 100000; /* ← 最重要：HUDより上にする */
   touch-action:manipulation;
 }
+
 
 .pause-btn:active{
   transform:scale(0.92);

@@ -1647,46 +1647,64 @@ let lookPadTouchStartX = 0;
 let lookPadTouchStartY = 0;
 let isLookPadTouching = false;
 
+// ★ タップ射撃用の変数（必須）
+let lpStartTime = 0;
+let lpMoved = false;
+
+// ★ lookPad は 1 回だけ定義
 const lookPad = document.getElementById("lookPad");
 
 lookPad.addEventListener("touchstart", (e) => {
   if (!gameRunning || isPaused) return;
-  
+
   e.preventDefault();
   e.stopPropagation();
-  
-  lookPadTouchStartX = e.touches[0].clientX;
-  lookPadTouchStartY = e.touches[0].clientY;
+
+  const t = e.touches[0];
+  lookPadTouchStartX = t.clientX;
+  lookPadTouchStartY = t.clientY;
+
+  lpStartTime = performance.now();
+  lpMoved = false;
+
   isLookPadTouching = true;
 }, { passive: false });
 
 lookPad.addEventListener("touchmove", (e) => {
   if (!isLookPadTouching || !gameRunning || isPaused || !e.touches.length) return;
-  
+
   e.preventDefault();
   e.stopPropagation();
-  
-  const currentX = e.touches[0].clientX;
-  const currentY = e.touches[0].clientY;
-  
-  const deltaX = currentX - lookPadTouchStartX;
-  const deltaY = currentY - lookPadTouchStartY;
-  
-  // 視点回転（左右・上下）
-  player.yaw += deltaX * 0.005;
-  player.pitch -= deltaY * 0.005;
-  
+
+  const t = e.touches[0];
+  const dx = t.clientX - lookPadTouchStartX;
+  const dy = t.clientY - lookPadTouchStartY;
+
+  if (Math.abs(dx) > 10 || Math.abs(dy) > 10) lpMoved = true;
+
+  // 視点回転
+  player.yaw += dx * 0.005;
+  player.pitch -= dy * 0.005;
+
   const limit = Math.PI / 2.5;
   if (player.pitch > limit) player.pitch = limit;
   if (player.pitch < -limit) player.pitch = -limit;
-  
-  lookPadTouchStartX = currentX;
-  lookPadTouchStartY = currentY;
+
+  lookPadTouchStartX = t.clientX;
+  lookPadTouchStartY = t.clientY;
 }, { passive: false });
 
 lookPad.addEventListener("touchend", (e) => {
   e.preventDefault();
   e.stopPropagation();
+
+  const duration = performance.now() - lpStartTime;
+
+  // ★ タップ射撃（移動なし・短時間）
+  if (!lpMoved && duration < 180 && gameRunning && !isPaused) {
+    shoot();
+  }
+
   isLookPadTouching = false;
 }, { passive: false });
 
@@ -1695,6 +1713,7 @@ lookPad.addEventListener("touchcancel", (e) => {
   e.stopPropagation();
   isLookPadTouching = false;
 }, { passive: false });
+
 lookPad.addEventListener("touchend", (e) => {
   e.preventDefault();
   e.stopPropagation();

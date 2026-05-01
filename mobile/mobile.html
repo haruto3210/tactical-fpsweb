@@ -489,6 +489,7 @@ canvas{
 
   <div class="hud">
     <div>TACTICAL OPS</div>
+<div>プレイヤー: <span id="playerNameLabel">PLAYER</span></div>
     <div> モード: <span id="modeName">NORMAL</span></div>
     <div> 体力: <span id="health">100</span></div>
     <div> 武器: <span id="weaponName">Rifle</span></div>
@@ -531,6 +532,14 @@ canvas{
 
   <div class="start-screen" id="startScreen">
     <h1 style="font-size:40px;color:#00ff64;margin-bottom:10px">TACTICAL FPS-WEB MOBILE</h1>
+<div style="margin-bottom:16px;color:#ddd;font-family:monospace;">
+  名前：
+  <input id="playerNameInput"
+         type="text"
+         maxlength="16"
+         placeholder="PLAYER"
+         style="padding:6px 8px;border-radius:4px;border:1px solid #555;background:#111;color:#0f0;"/>
+</div>
     <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p>
     <button class="btn" id="startNormal">▶ ノーマル</button>
     <button class="btn" id="startSpeedrun">▶ スピードラン</button>
@@ -552,6 +561,14 @@ canvas{
     <h1 style="font-size:40px;color:#00d0ff;margin-bottom:10px">一時停止</h1>
     <p style="color:#ccc;font-family:monospace;font-size:18px;margin:10px 0">殺した人数: <span id="pauseKills">0</span>人</p>
     <button class="btn btn-red" id="pauseResumeBtn">▶ ゲームに戻る</button>
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+  <button class="btn" id="pauseSaveBtn" style="background:linear-gradient(135deg,#00ff64 0%,#00dd55 100%);border-color:#00ff64;color:#000;">
+    💾 セーブ
+  </button>
+  <button class="btn" id="pauseLoadBtn" style="background:#444;border-color:#777;color:#fff;">
+    ▶ ロード
+  </button>
+</div>
     <button class="btn" id="pauseTitleBtn" style="margin-top:15px;background:#333;color:#fff">⬅ タイトルに戻る</button>
   </div>
 </div>
@@ -679,7 +696,8 @@ let waveNumber = 1;
 let waveEnemyCount = 0;
 let waveSpawnTimer = 0;
 let practiceScore = 0;
-
+// プレイヤー名
+let playerName = localStorage.getItem("tacops_playerName") || "PLAYER";
 // 武器システム
 const weapons = [
   { name:"ライフル", damage:30, maxAmmo:30, reloadTime:1500, fireRate:120, tracer:true },
@@ -774,6 +792,75 @@ lookPad.addEventListener("touchend", (e) => {
   }
   isLookPadTouching = false;
 }, { passive: false });
+function applyPlayerName() {
+  const input = document.getElementById("playerNameInput");
+  if (input) {
+    playerName = input.value.trim() || "PLAYER";
+    localStorage.setItem("tacops_playerName", playerName);
+  }
+  const label = document.getElementById("playerNameLabel");
+  if (label) label.textContent = playerName;
+}
+function saveGame() {
+  if (!gameRunning) return;
+
+  const data = {
+    player: {
+      x: player.x,
+      y: player.y,
+      z: player.z,
+      yaw: player.yaw,
+      pitch: player.pitch
+    },
+    health,
+    kills,
+    mode,
+    currentWeaponIndex,
+    ammo,
+    enemies,
+    healItems,
+    waveNumber,
+    waveEnemyCount
+  };
+
+  localStorage.setItem("tacops_mobile_save", JSON.stringify(data));
+  localStorage.setItem("tacops_playerName", playerName);
+
+  alert("セーブしました");
+}
+function loadGame() {
+  const json = localStorage.getItem("tacops_mobile_save");
+  if (!json) {
+    alert("セーブデータがありません");
+    return;
+  }
+
+  const data = JSON.parse(json);
+
+  // ★ player を再宣言しない
+  player.x = data.player.x;
+  player.y = data.player.y;
+  player.z = data.player.z;
+  player.yaw = data.player.yaw;
+  player.pitch = data.player.pitch;
+
+  health = data.health;
+  kills = data.kills;
+  mode = data.mode;
+  currentWeaponIndex = data.currentWeaponIndex;
+  ammo = data.ammo;
+
+  enemies = data.enemies || [];
+  healItems = data.healItems || [];
+  waveNumber = data.waveNumber || 1;
+  waveEnemyCount = data.waveEnemyCount || 0;
+
+  applyPlayerName();
+  updateHUD();
+
+  showGameControls();
+  gameRunning = true;
+}
 
 /* -------------------------
    ゲームロジック（抜粋・元のまま）
@@ -1233,7 +1320,13 @@ function updateHUD() {
   document.getElementById("modeName").textContent = mode;
   document.getElementById("healItemsCount").textContent = healItems.filter(i => !i.taken).length;
 }
+document.getElementById("pauseSaveBtn").onclick = () => {
+  saveGame();
+};
 
+document.getElementById("pauseLoadBtn").onclick = () => {
+  loadGame();
+};
 function initMap(){
   walls.length = 0;
   for (let i=-mapSize;i<=mapSize;i+=2){

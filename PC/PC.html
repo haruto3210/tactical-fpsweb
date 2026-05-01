@@ -1,31 +1,15 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>TACTICAL FPS PC</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="icon" type="image/png" href="../icon/icon.png">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#0f0;font-family:system-ui, -apple-system, "Segoe UI", sans-serif}
     #game-container{position:relative;width:100%;height:100%;overflow:hidden}
     canvas{display:block;width:100%;height:100%;image-rendering:crisp-edges}
-    .btn-home {
-      background: linear-gradient(135deg, #00ff64 0%, #00cc50 100%);
-      border: 2px solid #00ff64;
-      color: #000;
-      padding: 12px 20px;
-      font-size: 18px;
-      border-radius: 8px;
-      cursor: pointer;
-      width: 90%;
-      max-width: 300px;
-      margin: 10px auto;
-      display: block;
-      text-align: center;
-      font-weight: bold;
-    }
+    .btn-home {background: linear-gradient(135deg, #00ff64 0%, #00cc50 100%);border: 2px solid #00ff64;color: #000;padding: 12px 20px;font-size: 18px;border-radius: 8px;cursor: pointer;width: 90%;max-width: 300px;margin: 10px auto;display: block;text-align: center;font-weight: bold;}
     .btn-home:active { transform: scale(0.96); }
-
     .crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:10}
     .crosshair::before,.crosshair::after{content:'';position:absolute;background:rgba(0,255,100,0.85);box-shadow:0 0 8px rgba(0,255,100,0.7), inset 0 0 4px rgba(0,255,100,0.3)}
     .crosshair::before{width:24px;height:2px;top:50%;left:50%;transform:translate(-50%,-50%)}
@@ -51,10 +35,8 @@
     .modal .row{margin-top:8px;display:flex;gap:8px;justify-content:flex-end}
     .slot-selected{outline:3px solid rgba(0,255,100,0.9)}
     .slot-small{padding:8px 12px;font-size:14px}
-    /* hide file IO UI if accidentally left */
     #loadFileInput, #loadFileBtn, #saveFileBtn { display: none !important; }
   </style>
-  <style>body { box-sizing: border-box; }</style>
 </head>
 <body>
   <div id="game-container">
@@ -78,6 +60,7 @@
       <div id="bossHpBox" style="display:none;color:#ff6600">ボス体力: <span id="bossHp">0</span></div>
     </div>
 
+    <!-- Audio elements (missing files are handled with .catch) -->
     <audio id="sndHit" src="hit.mp3"></audio>
     <audio id="sndHurt" src="hurt.mp3"></audio>
     <audio id="sndExplosion" src="explosion.mp3"></audio>
@@ -167,27 +150,14 @@
     </div>
   </div>
 
-  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
-
   <script>
-  // ===========================
-  // 統合版（ファイルIO 削除版）
-  // ===========================
+  // -------------------------
+  // Robust single-file game
+  // No runtime ReferenceError / SyntaxError expected
+  // Defensive checks and safe start
+  // -------------------------
 
-  // Basic state
-  function goFullscreen() {
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) elem.requestFullscreen();
-    else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-    else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-  }
-
-  let gameRunning = false;
-  let mode = "NORMAL";
-  let isPaused = false;
-  let isPointerLocked = false;
-
+  // Utilities and state
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
   const keys = { w:false, a:false, s:false, d:false };
@@ -234,7 +204,7 @@
     BOSS: { name:"ボス", health:800, speed:0.04, color:"#ff8800", fireRate:300, damage:20 }
   };
 
-  // projection, map, collision, spawn (same as before)
+  // Projection
   function project3D(x, y, z) {
     const dx = x - player.x;
     const dy = y - player.y;
@@ -246,12 +216,13 @@
     const ry = dy * cp - rz * sp;
     const rz2 = dy * sp + rz * cp;
     if (rz2 <= 0.1) return null;
-    const fov = canvas.height;
+    const fov = canvas.height || 600;
     return { x: canvas.width/2 + (rx / rz2) * fov, y: canvas.height/2 - (ry / rz2) * fov, z: rz2 };
   }
 
+  // Map init
   function initMap(){
-    walls.length = 0;
+    walls = [];
     for (let i=-mapSize;i<=mapSize;i+=2){
       walls.push({ x1:-mapSize, z1:i, x2:-mapSize, z2:i+2, color:"#2a4a3a", height:4 });
       walls.push({ x1:mapSize, z1:i, x2:mapSize, z2:i+2, color:"#2a4a3a", height:4 });
@@ -270,6 +241,7 @@
     }
   }
 
+  // Collision
   function isColliding(x, z) {
     if (Math.abs(x) > mapSize-1 || Math.abs(z) > mapSize-1) return true;
     for (const w of walls){
@@ -295,8 +267,9 @@
     return false;
   }
 
+  // Spawns
   function spawnEnemy(typeKey) {
-    const type = ENEMY_TYPES[typeKey];
+    const type = ENEMY_TYPES[typeKey] || ENEMY_TYPES.NORMAL;
     const x = (Math.random() * 2 - 1) * (mapSize - 5);
     const z = (Math.random() * 2 - 1) * (mapSize - 5);
     enemies.push({
@@ -339,14 +312,153 @@
     }
   }
 
-  // draw functions (heal item, enemy, walls, projectiles, minimap)
+  // Player update (defined before use)
+  function updatePlayer(dt) {
+    let dx = 0, dz = 0;
+    if (keys.w) { dx += Math.sin(player.yaw); dz += Math.cos(player.yaw); }
+    if (keys.s) { dx -= Math.sin(player.yaw); dz -= Math.cos(player.yaw); }
+    if (keys.a) { dx -= Math.cos(player.yaw); dz += Math.sin(player.yaw); }
+    if (keys.d) { dx += Math.cos(player.yaw); dz -= Math.sin(player.yaw); }
+    if (dx !== 0 || dz !== 0) {
+      const len = Math.hypot(dx, dz) || 1;
+      dx = dx / len * player.speed * dt * 60;
+      dz = dz / len * player.speed * dt * 60;
+      const newX = player.x + dx;
+      const newZ = player.z + dz;
+      if (!isColliding(newX, player.z)) player.x = newX;
+      if (!isColliding(player.x, newZ)) player.z = newZ;
+    }
+  }
+
+  // Enemy AI
+  function updateEnemies(dt) {
+    const now = performance.now();
+    for (const enemy of enemies) {
+      const dx = player.x - enemy.x;
+      const dz = player.z - enemy.z;
+      const dist = Math.hypot(dx, dz);
+      const type = ENEMY_TYPES[enemy.type] || ENEMY_TYPES.NORMAL;
+
+      enemy.stateTimer = (enemy.stateTimer || 0) - dt;
+      if (enemy.stateTimer <= 0) {
+        if (dist < 15) { enemy.state = "chase"; enemy.stateTimer = 2; }
+        else if (dist < 5 && health < 50) { enemy.state = "flee"; enemy.stateTimer = 3; }
+        else { enemy.state = "patrol"; enemy.stateTimer = 3; }
+      }
+
+      if (enemy.state === "patrol") {
+        enemy.targetTimer = (enemy.targetTimer || 0) - dt;
+        if (enemy.targetTimer <= 0) {
+          enemy.targetX = (Math.random()*2-1)*(mapSize-5);
+          enemy.targetZ = (Math.random()*2-1)*(mapSize-5);
+          enemy.targetTimer = 5;
+        }
+        const tdx = enemy.targetX - enemy.x;
+        const tdz = enemy.targetZ - enemy.z;
+        const tdist = Math.hypot(tdx, tdz) || 1;
+        if (tdist > 0.5) {
+          const mx = (tdx/tdist) * enemy.speed * dt * 60;
+          const mz = (tdz/tdist) * enemy.speed * dt * 60;
+          if (!isEnemyColliding(enemy.x + mx, enemy.z)) enemy.x += mx;
+          if (!isEnemyColliding(enemy.x, enemy.z + mz)) enemy.z += mz;
+        }
+      } else if (enemy.state === "chase") {
+        if (dist > 0.5) {
+          const mx = (dx/dist) * enemy.speed * dt * 60;
+          const mz = (dz/dist) * enemy.speed * dt * 60;
+          if (!isEnemyColliding(enemy.x + mx, enemy.z)) enemy.x += mx;
+          if (!isEnemyColliding(enemy.x, enemy.z + mz)) enemy.z += mz;
+        }
+      } else if (enemy.state === "flee") {
+        if (dist < 20) {
+          const mx = (-dx/dist) * enemy.speed * 1.5 * dt * 60;
+          const mz = (-dz/dist) * enemy.speed * 1.5 * dt * 60;
+          if (!isEnemyColliding(enemy.x + mx, enemy.z)) enemy.x += mx;
+          if (!isEnemyColliding(enemy.x, enemy.z + mz)) enemy.z += mz;
+        }
+      }
+
+      enemy.walkPhase = (enemy.walkPhase || 0) + enemy.speed * 10 * dt * 60;
+
+      if (dist < 0.9) {
+        health -= 10 * dt;
+        updateHUD();
+        const damageOverlay = document.querySelector(".damage-overlay");
+        if (damageOverlay) { damageOverlay.classList.remove("active"); void damageOverlay.offsetWidth; damageOverlay.classList.add("active"); }
+        const snd = document.getElementById("sndHurt");
+        if (snd) snd.play().catch(()=>{});
+        if (health <= 0) endGame();
+      }
+
+      if (dist < 30 && now - (enemy.lastShot || 0) > (enemy.fireRateMod || type.fireRate)) {
+        enemy.lastShot = now;
+        const dy = player.y - enemy.y;
+        const dlen = Math.hypot(dx, dz, dy) || 1;
+        const vx = (dx/dlen)*1.2;
+        const vy = (dy/dlen)*1.2;
+        const vz = (dz/dlen)*1.2;
+        projectiles.push({ x:enemy.x,y:enemy.y,z:enemy.z, vx,vy,vz, life:3.0, owner:enemy, damage:type.damage });
+        playEnemyShootSound();
+      }
+    }
+  }
+
+  // Projectiles
+  function updateProjectiles(dt) {
+    const removeIdx = [];
+    for (let i = 0; i < projectiles.length; i++) {
+      const p = projectiles[i];
+      const nextX = p.x + p.vx * dt * 60;
+      const nextY = p.y + p.vy * dt * 60;
+      const nextZ = p.z + p.vz * dt * 60;
+
+      if (isColliding(nextX, nextZ)) { p.life = 0; } else { p.x = nextX; p.y = nextY; p.z = nextZ; }
+
+      p.life -= dt;
+
+      if (p.life > 0) {
+        if (p.owner === "player") {
+          for (let j = 0; j < enemies.length; j++) {
+            const enemy = enemies[j];
+            const dist = Math.hypot(p.x - enemy.x, p.z - enemy.z);
+            if (dist < 0.9) {
+              enemy.health -= p.damage;
+              p.life = 0;
+              const snd = document.getElementById("sndHit");
+              if (snd) snd.play().catch(()=>{});
+              if (enemy.health <= 0) { enemies.splice(j, 1); j--; kills++; updateHUD(); }
+              break;
+            }
+          }
+        } else {
+          const dxp = p.x - player.x;
+          const dzp = p.z - player.z;
+          if (Math.hypot(dxp, dzp) < 1.0) {
+            health -= p.damage;
+            p.life = 0;
+            updateHUD();
+            const damageOverlay = document.querySelector(".damage-overlay");
+            if (damageOverlay) { damageOverlay.classList.remove("active"); void damageOverlay.offsetWidth; damageOverlay.classList.add("active"); }
+            const snd = document.getElementById("sndHurt");
+            if (snd) snd.play().catch(()=>{});
+            if (health <= 0) endGame();
+          }
+        }
+      }
+
+      if (p.life <= 0) removeIdx.push(i);
+    }
+    for (let i = removeIdx.length - 1; i >= 0; i--) projectiles.splice(removeIdx[i], 1);
+  }
+
+  // Drawing helpers
   function drawHealItem(item) {
     const p = project3D(item.x, item.y, item.z);
     if (!p || p.z <= 0) return null;
     const size = 30 / p.z;
     const t = performance.now() * 0.007;
     const bob = Math.sin(t) * 5;
-    item.rotation += 0.05;
+    item.rotation = (item.rotation || 0) + 0.05;
     return {
       z: p.z,
       draw: () => {
@@ -390,15 +502,15 @@
     const p = project3D(enemy.x, enemy.y, enemy.z);
     if (!p || p.z <= 0) return null;
     const size = 250 / p.z;
-    const bob = Math.sin(enemy.walkPhase) * (size*0.1);
-    const hpRatio = Math.max(0, enemy.health / enemy.maxHealth);
+    const bob = Math.sin(enemy.walkPhase || 0) * (size*0.1);
+    const hpRatio = Math.max(0, (enemy.health || 0) / (enemy.maxHealth || 1));
     const lightLevel = Math.max(0.4, 1 - p.z / 50);
     return {
       z: p.z,
       draw: () => {
         ctx.save();
         const bodyGrad = ctx.createLinearGradient(p.x - size/2, p.y - size, p.x + size/2, p.y);
-        bodyGrad.addColorStop(0, enemy.color);
+        bodyGrad.addColorStop(0, enemy.color || "#cc33aa");
         bodyGrad.addColorStop(1, `rgba(0,0,0,${0.5 * lightLevel})`);
         ctx.fillStyle = bodyGrad;
         ctx.fillRect(p.x-size/2, p.y-size + bob, size, size*1.5);
@@ -423,7 +535,7 @@
         ctx.beginPath(); ctx.arc(p.x+size*0.15, eyeY, size*0.12, 0, Math.PI*2); ctx.fill();
         const pupilColor = enemy.state === "chase" ? "#ff3333" : enemy.state === "flee" ? "#ffff00" : "#ff9933";
         ctx.fillStyle = pupilColor;
-        const pupilOffset = Math.sin(enemy.walkPhase) * size * 0.03;
+        const pupilOffset = Math.sin(enemy.walkPhase || 0) * size * 0.03;
         ctx.beginPath(); ctx.arc(p.x-size*0.15 + pupilOffset, eyeY, size*0.06, 0, Math.PI*2); ctx.fill();
         ctx.beginPath(); ctx.arc(p.x+size*0.15 + pupilOffset, eyeY, size*0.06, 0, Math.PI*2); ctx.fill();
         const hpWidth = size * 1.2;
@@ -465,7 +577,7 @@
         ctx.lineTo(pts[2].x,pts[2].y);
         ctx.lineTo(pts[3].x,pts[3].y);
         ctx.closePath();
-        ctx.fillStyle = wall.color;
+        ctx.fillStyle = wall.color || "#444";
         ctx.globalAlpha = distance;
         ctx.fill();
         ctx.globalAlpha = 1;
@@ -530,7 +642,32 @@
     ctx.restore();
   }
 
-  // shooting, reload, sounds
+  // Shooting / reload / sounds
+  function playShootSound() {
+    const original = document.getElementById("sndShootPlayer");
+    if (!original) return;
+    const s = original.cloneNode();
+    s.volume = 1.0;
+    s.play().catch(()=>{});
+  }
+  function playEnemyShootSound() {
+    const original = document.getElementById("sndShootEnemy");
+    if (!original) return;
+    const s = original.cloneNode();
+    s.volume = 0.6;
+    s.play().catch(()=>{});
+  }
+
+  function reload() {
+    if (isReloading) return;
+    const weapon = weapons[currentWeaponIndex];
+    if (ammo === weapon.maxAmmo) return;
+    isReloading = true;
+    const ammoEl = document.getElementById("ammo");
+    if (ammoEl) ammoEl.textContent = "...";
+    setTimeout(() => { ammo = weapon.maxAmmo; isReloading = false; updateHUD(); }, weapon.reloadTime);
+  }
+
   function shoot() {
     if (!gameRunning || isReloading) return;
     const now = performance.now();
@@ -567,148 +704,16 @@
     if (ammo <= 0) reload();
   }
 
-  function reload() {
-    if (isReloading) return;
-    const weapon = weapons[currentWeaponIndex];
-    if (ammo === weapon.maxAmmo) return;
-    isReloading = true;
-    const ammoEl = document.getElementById("ammo");
-    if (ammoEl) ammoEl.textContent = "...";
-    setTimeout(() => { ammo = weapon.maxAmmo; isReloading = false; updateHUD(); }, weapon.reloadTime);
-  }
-
-  function playShootSound() {
-    const original = document.getElementById("sndShootPlayer");
-    if (!original) return;
-    const s = original.cloneNode();
-    s.volume = 1.0;
-    s.play().catch(()=>{});
-  }
-  function playEnemyShootSound() {
-    const original = document.getElementById("sndShootEnemy");
-    if (!original) return;
-    const s = original.cloneNode();
-    s.volume = 0.6;
-    s.play().catch(()=>{});
-  }
-
-  // projectile update
-  function updateProjectiles(dt) {
-    const removeIdx = [];
-    for (let i = 0; i < projectiles.length; i++) {
-      const p = projectiles[i];
-      const nextX = p.x + p.vx * dt * 60;
-      const nextY = p.y + p.vy * dt * 60;
-      const nextZ = p.z + p.vz * dt * 60;
-      if (isColliding(nextX, nextZ)) { p.life = 0; } else { p.x = nextX; p.y = nextY; p.z = nextZ; }
-      p.life -= dt;
-      if (p.life > 0) {
-        if (p.owner === "player") {
-          for (let j = 0; j < enemies.length; j++) {
-            const enemy = enemies[j];
-            const dist = Math.hypot(p.x - enemy.x, p.z - enemy.z);
-            if (dist < 0.9) {
-              enemy.health -= p.damage;
-              p.life = 0;
-              const snd = document.getElementById("sndHit");
-              if (snd) snd.play().catch(()=>{});
-              if (enemy.health <= 0) { enemies.splice(j, 1); j--; kills++; updateHUD(); }
-              break;
-            }
-          }
-        } else {
-          const dxp = p.x - player.x;
-          const dzp = p.z - player.z;
-          if (Math.hypot(dxp, dzp) < 1.0) {
-            health -= p.damage;
-            p.life = 0;
-            updateHUD();
-            const damageOverlay = document.querySelector(".damage-overlay");
-            if (damageOverlay) { damageOverlay.classList.remove("active"); void damageOverlay.offsetWidth; damageOverlay.classList.add("active"); }
-            const snd = document.getElementById("sndHurt");
-            if (snd) snd.play().catch(()=>{});
-            if (health <= 0) endGame();
-          }
-        }
-      }
-      if (p.life <= 0) removeIdx.push(i);
-    }
-    for (let i = removeIdx.length - 1; i >= 0; i--) projectiles.splice(removeIdx[i], 1);
-  }
-
-  // enemies update
-  function updateEnemies(dt) {
-    const now = performance.now();
-    enemies.forEach(enemy => {
-      const dx = player.x - enemy.x;
-      const dz = player.z - enemy.z;
-      const dist = Math.hypot(dx, dz);
-      const type = ENEMY_TYPES[enemy.type] || ENEMY_TYPES.NORMAL;
-      enemy.stateTimer -= dt;
-      if (enemy.stateTimer <= 0) {
-        if (dist < 15) { enemy.state = "chase"; enemy.stateTimer = 2; }
-        else if (dist < 5 && health < 50) { enemy.state = "flee"; enemy.stateTimer = 3; }
-        else { enemy.state = "patrol"; enemy.stateTimer = 3; }
-      }
-      if (enemy.state === "patrol") {
-        enemy.targetTimer -= dt;
-        if (enemy.targetTimer <= 0) { enemy.targetX = (Math.random()*2-1)*(mapSize-5); enemy.targetZ = (Math.random()*2-1)*(mapSize-5); enemy.targetTimer = 5; }
-        const tdx = enemy.targetX - enemy.x;
-        const tdz = enemy.targetZ - enemy.z;
-        const tdist = Math.hypot(tdx, tdz);
-        if (tdist > 0.5) {
-          const mx = (tdx/tdist) * enemy.speed * dt * 60;
-          const mz = (tdz/tdist) * enemy.speed * dt * 60;
-          if (!isEnemyColliding(enemy.x + mx, enemy.z)) enemy.x += mx;
-          if (!isEnemyColliding(enemy.x, enemy.z + mz)) enemy.z += mz;
-        }
-      } else if (enemy.state === "chase") {
-        if (dist > 0.5) {
-          const mx = (dx/dist) * enemy.speed * dt * 60;
-          const mz = (dz/dist) * enemy.speed * dt * 60;
-          if (!isEnemyColliding(enemy.x + mx, enemy.z)) enemy.x += mx;
-          if (!isEnemyColliding(enemy.x, enemy.z + mz)) enemy.z += mz;
-        }
-      } else if (enemy.state === "flee") {
-        if (dist < 20) {
-          const mx = (-dx/dist) * enemy.speed * 1.5 * dt * 60;
-          const mz = (-dz/dist) * enemy.speed * 1.5 * dt * 60;
-          if (!isEnemyColliding(enemy.x + mx, enemy.z)) enemy.x += mx;
-          if (!isEnemyColliding(enemy.x, enemy.z + mz)) enemy.z += mz;
-        }
-      }
-      enemy.walkPhase += enemy.speed * 10 * dt * 60;
-      if (dist < 0.9) {
-        health -= 10 * dt;
-        updateHUD();
-        const damageOverlay = document.querySelector(".damage-overlay");
-        if (damageOverlay) { damageOverlay.classList.remove("active"); void damageOverlay.offsetWidth; damageOverlay.classList.add("active"); }
-        const snd = document.getElementById("sndHurt");
-        if (snd) snd.play().catch(()=>{});
-        if (health <= 0) endGame();
-      }
-      if (dist < 30 && now - enemy.lastShot > enemy.fireRateMod) {
-        enemy.lastShot = now;
-        const dy = player.y - enemy.y;
-        const dlen = Math.hypot(dx, dz, dy) || 1;
-        const vx = (dx/dlen)*1.2;
-        const vy = (dy/dlen)*1.2;
-        const vz = (dz/dlen)*1.2;
-        projectiles.push({ x:enemy.x,y:enemy.y,z:enemy.z, vx,vy,vz, life:3.0, owner:enemy, damage:type.damage });
-        playEnemyShootSound();
-      }
-    });
-  }
-
-  // HUD, start/end/reset
+  // HUD and game control
   function updateHUD() {
-    const healthEl = document.getElementById("health"); if (healthEl) healthEl.textContent = Math.floor(health);
+    const healthEl = document.getElementById("health"); if (healthEl) healthEl.textContent = Math.max(0, Math.floor(health));
     const weaponNameEl = document.getElementById("weaponName"); if (weaponNameEl) weaponNameEl.textContent = weapons[currentWeaponIndex].name;
     const ammoEl = document.getElementById("ammo"); if (ammoEl) ammoEl.textContent = ammo;
     const maxAmmoEl = document.getElementById("maxAmmo"); if (maxAmmoEl) maxAmmoEl.textContent = weapons[currentWeaponIndex].maxAmmo;
     const killsEl = document.getElementById("kills"); if (killsEl) killsEl.textContent = kills;
     const modeEl = document.getElementById("modeName"); if (modeEl) modeEl.textContent = mode;
     const healCountEl = document.getElementById("healItemsCount"); if (healCountEl) healCountEl.textContent = healItems.filter(i => !i.taken).length;
+    const playerLabel = document.getElementById("playerNameLabel"); if (playerLabel) playerLabel.textContent = playerName;
   }
 
   function startGame(selectedMode) {
@@ -748,9 +753,7 @@
     enemies = []; projectiles = []; tracerLines = []; healItems = []; health = 100; kills = 0;
   }
 
-  // =========================
-  // Save slots (no file IO)
-  // =========================
+  // Save slots (localStorage)
   const SLOT_KEY_PREFIX = "tacops_slot_";
   let currentSlotSelection = 0;
   let _pendingOverwriteSlot = null;
@@ -838,7 +841,7 @@
   }
   function hideSlotNameModal() { const modal = document.getElementById("slotNameModal"); if (modal) modal.style.display = "none"; _pendingEditSlot = null; }
 
-  // load/save common functions (localStorage main save/load)
+  // Save/load main
   function applyPlayerName() {
     const input = document.getElementById("playerNameInput");
     if (input) { playerName = input.value.trim() || "PLAYER"; localStorage.setItem("tacops_playerName", playerName); }
@@ -853,9 +856,14 @@
       healItems: healItems.map(h => ({ x: h.x, y: h.y, z: h.z, taken: h.taken, size: h.size, rotation: h.rotation })),
       walls: walls, waveNumber: waveNumber, waveEnemyCount: waveEnemyCount, survivalTime: survivalTime, speedrunStart: speedrunStart
     };
-    localStorage.setItem("tacops_save", JSON.stringify(data));
-    localStorage.setItem("tacops_playerName", playerName);
-    alert("セーブ完了");
+    try {
+      localStorage.setItem("tacops_save", JSON.stringify(data));
+      localStorage.setItem("tacops_playerName", playerName);
+      alert("セーブ完了");
+    } catch (e) {
+      console.error("saveGame failed", e);
+      alert("セーブに失敗しました");
+    }
   }
 
   function loadGameFromData(data) {
@@ -882,8 +890,13 @@
     try { const data = JSON.parse(json); loadGameFromData(data); } catch (err) { console.error(err); alert("セーブデータの読み込みに失敗しました"); }
   }
 
-  // game loop
-  function resize(){ canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+  // Game loop
+  function resize(){ canvas.width = canvas.clientWidth || window.innerWidth; canvas.height = canvas.clientHeight || window.innerHeight; }
+
+  let gameRunning = false;
+  let mode = "NORMAL";
+  let isPaused = false;
+  let isPointerLocked = false;
 
   function gameLoop(now) {
     const dt = Math.min((now - lastTime)/1000, 0.016);
@@ -891,14 +904,25 @@
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drawFloorAndSky();
     const drawables = [];
-    walls.forEach(w=>{ const d = drawWall(w); if (d) drawables.push(d); });
-    enemies.forEach(e=>{ const d = drawEnemy(e); if (d) drawables.push(d); });
-    healItems.forEach(item=>{ if (!item.taken){ const d = drawHealItem(item); if (d) drawables.push(d); } });
+    for (const w of walls) { const d = drawWall(w); if (d) drawables.push(d); }
+    for (const e of enemies) { const d = drawEnemy(e); if (d) drawables.push(d); }
+    for (const item of healItems) { if (!item.taken) { const d = drawHealItem(item); if (d) drawables.push(d); } }
     drawables.sort((a,b)=>b.z - a.z); drawables.forEach(d=>d.draw());
     drawProjectiles(); drawMinimap();
+
     if (gameRunning && !isPaused) {
-      updatePlayer(dt); updateEnemies(dt); updateProjectiles(dt); checkHealPickup();
-      healSpawnTimer += dt; if (healSpawnTimer > 15) { healSpawnTimer = 0; spawnHealItem(); }
+      try {
+        updatePlayer(dt);
+        updateEnemies(dt);
+        updateProjectiles(dt);
+        checkHealPickup();
+      } catch (err) {
+        console.error("Runtime error in update loop:", err);
+      }
+
+      healSpawnTimer += dt;
+      if (healSpawnTimer > 15) { healSpawnTimer = 0; spawnHealItem(); }
+
       if (mode === "SPEEDRUN") {
         const elapsed = (now - speedrunStart) / 1000;
         const timerEl = document.getElementById("timer"); if (timerEl) timerEl.textContent = elapsed.toFixed(2);
@@ -922,10 +946,10 @@
         if (enemies.length === 0) endGame();
       }
     }
+
     requestAnimationFrame(gameLoop);
   }
 
-  // draw floor and sky helper
   function drawFloorAndSky() {
     const skyGrad = ctx.createLinearGradient(0,0,0,canvas.height/2);
     skyGrad.addColorStop(0,"#0a0a15"); skyGrad.addColorStop(0.5,"#151530"); skyGrad.addColorStop(1,"#1a1a35");
@@ -935,13 +959,19 @@
     ctx.fillStyle = floorGrad; ctx.fillRect(0,canvas.height/2,canvas.width,canvas.height/2);
   }
 
-  // Event registration (safe)
+  // Event registration
   document.addEventListener("DOMContentLoaded", () => {
-    const saveFileBtn = document.getElementById("saveFileBtn"); if (saveFileBtn) saveFileBtn.style.display = "none";
-    const loadFileBtn = document.getElementById("loadFileBtn"); if (loadFileBtn) loadFileBtn.style.display = "none";
-    const loadFileInput = document.getElementById("loadFileInput"); if (loadFileInput) loadFileInput.style.display = "none";
+    resize();
+    initMap();
+    updateHUD();
+    updateSlotButtons();
 
-    const loadGameBtn = document.getElementById("loadGameBtn"); if (loadGameBtn) loadGameBtn.style.display = "none";
+    // Buttons
+    const sNormal = document.getElementById("startNormal"); if (sNormal) sNormal.addEventListener("click", () => { goFullscreen(); startGame("NORMAL"); });
+    const sSpeed = document.getElementById("startSpeedrun"); if (sSpeed) sSpeed.addEventListener("click", () => { goFullscreen(); startGame("SPEEDRUN"); });
+    const sSurv = document.getElementById("startSurvival"); if (sSurv) sSurv.addEventListener("click", () => { goFullscreen(); startGame("SURVIVAL"); });
+    const sWave = document.getElementById("startWave"); if (sWave) sWave.addEventListener("click", () => { goFullscreen(); startGame("WAVE"); });
+    const sPractice = document.getElementById("startPractice"); if (sPractice) sPractice.addEventListener("click", () => { goFullscreen(); startGame("PRACTICE"); });
 
     const pauseSaveBtn = document.getElementById("pauseSaveBtn");
     if (pauseSaveBtn) pauseSaveBtn.onclick = () => {
@@ -957,20 +987,14 @@
       else loadGame();
     };
 
-    const homeBtn = document.getElementById("homeBtn"); if (homeBtn) homeBtn.onclick = () => { window.location.href = "../index.html"; };
+    const homeBtn = document.getElementById("homeBtn"); if (homeBtn) homeBtn.onclick = () => { try { window.location.href = "../index.html"; } catch(e){} };
     const restartBtn = document.getElementById("restartBtn"); if (restartBtn) restartBtn.addEventListener("click", () => startGame(mode));
     const pauseResumeBtn = document.getElementById("pauseResumeBtn"); if (pauseResumeBtn) pauseResumeBtn.addEventListener("click", () => { const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "none"; isPaused = false; canvas.requestPointerLock?.(); });
     const pauseTitleBtn = document.getElementById("pauseTitleBtn"); if (pauseTitleBtn) pauseTitleBtn.addEventListener("click", () => { const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "none"; const gameOver = document.getElementById("gameOverScreen"); if (gameOver) gameOver.style.display = "none"; const start = document.getElementById("startScreen"); if (start) start.style.display = "flex"; gameRunning = false; resetGameState(); const bgm1 = document.getElementById("bgm1"); if (bgm1) { bgm1.volume = 0.25; bgm1.play().catch(()=>{}); } });
 
     const backToTitleBtn = document.getElementById("backToTitleBtn"); if (backToTitleBtn) backToTitleBtn.addEventListener("click", () => { const gameOver = document.getElementById("gameOverScreen"); if (gameOver) gameOver.style.display = "none"; const start = document.getElementById("startScreen"); if (start) start.style.display = "flex"; gameRunning = false; resetGameState(); const bgm1 = document.getElementById("bgm1"); if (bgm1) { bgm1.volume = 0.25; bgm1.play().catch(()=>{}); } });
 
-    const sNormal = document.getElementById("startNormal"); if (sNormal) sNormal.addEventListener("click", () => { goFullscreen(); startGame("NORMAL"); });
-    const sSpeed = document.getElementById("startSpeedrun"); if (sSpeed) sSpeed.addEventListener("click", () => { goFullscreen(); startGame("SPEEDRUN"); });
-    const sSurv = document.getElementById("startSurvival"); if (sSurv) sSurv.addEventListener("click", () => { goFullscreen(); startGame("SURVIVAL"); });
-    const sWave = document.getElementById("startWave"); if (sWave) sWave.addEventListener("click", () => { goFullscreen(); startGame("WAVE"); });
-    const sPractice = document.getElementById("startPractice"); if (sPractice) sPractice.addEventListener("click", () => { goFullscreen(); startGame("PRACTICE"); });
-
-    // slot buttons
+    // Slot buttons
     for (let i = 1; i <= 3; i++) {
       const btn = document.getElementById("slotBtn" + i);
       if (!btn) continue;
@@ -1016,36 +1040,27 @@
     const playerNameInput = document.getElementById("playerNameInput");
     if (playerNameInput) playerNameInput.addEventListener("change", () => { applyPlayerName(); });
 
-    updateSlotButtons();
+    // Start loop safely
+    console.log("Starting game loop. Functions present:", typeof updatePlayer, typeof updateEnemies, typeof updateProjectiles, typeof checkHealPickup);
+    requestAnimationFrame(gameLoop);
+  });
 
-    // wrap openPauseMenu to include autosave
-    const origOpenPause = window.openPauseMenu;
-    window.openPauseMenu = function() {
-      const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "flex";
-      isPaused = true;
-      const autosave = localStorage.getItem("tacops_autosave") === "1";
-      if (autosave && currentSlotSelection >= 1 && currentSlotSelection <= 3) { saveToSlot(currentSlotSelection, true); updateSlotButtons(); }
-      if (typeof origOpenPause === "function") origOpenPause();
-    };
-    if (!window.closePauseMenu) window.closePauseMenu = function() { const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "none"; isPaused = false; };
-
-  }); // DOMContentLoaded end
-
-  // keyboard / mouse / pointer lock
+  // Keyboard / mouse / pointer lock
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
+      const pause = document.getElementById("pauseScreen");
       if (!isPaused) {
-        const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "flex";
+        if (pause) pause.style.display = "flex";
         isPaused = true;
         const autosave = localStorage.getItem("tacops_autosave") === "1";
         if (autosave && currentSlotSelection >= 1 && currentSlotSelection <= 3) { saveToSlot(currentSlotSelection, true); updateSlotButtons(); }
       } else {
-        const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "none";
+        if (pause) pause.style.display = "none";
         isPaused = false;
         canvas.requestPointerLock?.();
       }
     }
-    const key = e.key.toLowerCase();
+    const key = (e.key || "").toLowerCase();
     if (key in keys) keys[key] = true;
     if (key === "r") reload();
     if (key === "1") { currentWeaponIndex = 0; ammo = Math.min(ammo, weapons[0].maxAmmo); updateHUD(); }
@@ -1054,12 +1069,12 @@
     if (key === "4") { currentWeaponIndex = 3; ammo = Math.min(ammo, weapons[3].maxAmmo); updateHUD(); }
   });
 
-  document.addEventListener("keyup", e => { const key = e.key.toLowerCase(); if (key in keys) keys[key] = false; });
+  document.addEventListener("keyup", e => { const key = (e.key || "").toLowerCase(); if (key in keys) keys[key] = false; });
 
   document.addEventListener("mousemove", e => {
     if (!gameRunning || !isPointerLocked || isPaused) return;
-    player.yaw += e.movementX * 0.003;
-    player.pitch -= e.movementY * 0.003;
+    player.yaw += (e.movementX || 0) * 0.003;
+    player.pitch -= (e.movementY || 0) * 0.003;
     const limit = Math.PI/2.5;
     if (player.pitch > limit) player.pitch = limit;
     if (player.pitch < -limit) player.pitch = -limit;
@@ -1074,8 +1089,14 @@
 
   window.addEventListener("resize", resize);
 
-  window.addEventListener("load", () => { resize(); initMap(); updateHUD(); requestAnimationFrame(gameLoop); });
+  // Defensive: ensure no undefined references for open/close pause functions
+  window.openPauseMenu = window.openPauseMenu || function() { const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "flex"; isPaused = true; };
+  window.closePauseMenu = window.closePauseMenu || function() { const pause = document.getElementById("pauseScreen"); if (pause) pause.style.display = "none"; isPaused = false; };
 
+  // Expose minimal debug helpers (safe)
+  window.tacops = {
+    startGame, endGame, saveGame, loadGame, saveToSlot, loadFromSlot, updateHUD
+  };
   </script>
 </body>
 </html>

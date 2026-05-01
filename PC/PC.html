@@ -47,9 +47,14 @@
     .btn-red{background:linear-gradient(135deg,#ff4444 0%,#cc0000 100%);color:#fff;border:2px solid #ff4444}
     .btn-red:hover{box-shadow:0 0 30px rgba(255,0,0,0.6)}
     .pause-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:9999;pointer-events:auto}
+    /* モーダル */
+    .modal-backdrop{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:10000}
+    .modal{background:#111;border:2px solid #00ff64;padding:18px;border-radius:8px;color:#fff;min-width:320px;max-width:90%}
+    .modal h3{margin:0 0 8px 0;color:#0f0}
+    .modal .row{margin-top:8px;display:flex;gap:8px;justify-content:flex-end}
+    .slot-selected{outline:3px solid rgba(0,255,100,0.9)}
+    .slot-small{padding:8px 12px;font-size:14px}
   </style>
-  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
   <style>body { box-sizing: border-box; }</style>
  </head>
  <body>
@@ -64,6 +69,7 @@
     <div>
      TACTICAL FPS-WEB PC
     </div>
+<div>プレイヤー: <span id="playerNameLabel">PLAYER</span></div>
     <div>
      モード: <span id="modeName">NORMAL</span>
     </div>
@@ -109,7 +115,30 @@
 
    <div class="start-screen" id="startScreen">
     <h1 style="font-size:48px;color:#00ff64;margin-bottom:10px">TACTICAL FPS</h1>
-    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p><button class="btn" id="startNormal">▶ ノーマル</button>
+<div style="margin-bottom:16px;color:#ddd;font-family:monospace;">
+  名前：
+  <input id="playerNameInput"
+         type="text"
+         maxlength="16"
+         placeholder="PLAYER"
+         style="padding:6px 8px;border-radius:4px;border:1px solid #555;background:#111;color:#0f0;"/>
+</div>
+    <p style="color:#aaa;font-family:monospace;margin-bottom:20px">敵を全滅させましょう。モードを選択してください</p>
+<button class="btn" id="loadGameBtn" style="background:#333;border-color:#777;color:#fff;">
+  ▶ ロード
+</button>
+<input type="file" id="loadFileInput" accept="application/json" style="display:none;">
+<button id="loadFileBtn" class="btn">📂 JSON からロード</button>
+<button id="saveFileBtn" class="btn" style="background:linear-gradient(135deg,#00aaff 0%,#0088dd 100%);border-color:#00aaff;color:#000;">💾 JSON を保存</button>
+
+<!-- セーブスロット UI -->
+<div id="saveSlotsContainer" style="display:flex;gap:8px;margin-top:12px;">
+  <button id="slotBtn1" class="btn slot-small" data-slot="1">Slot 1: 空</button>
+  <button id="slotBtn2" class="btn slot-small" data-slot="2">Slot 2: 空</button>
+  <button id="slotBtn3" class="btn slot-small" data-slot="3">Slot 3: 空</button>
+</div>
+
+<button class="btn" id="startNormal">▶ ノーマル</button>
 <button class="btn" id="startSpeedrun">▶ スピードラン</button>
 <button class="btn" id="startSurvival">▶ サバイバル</button>
 <button class="btn" id="startWave" style="background:linear-gradient(135deg,#ffaa00 0%,#ff8800 100%);border-color:#ffaa00">⚡ ウェーブ戦</button>
@@ -123,14 +152,66 @@
    </div>
    <div class="pause-screen" id="pauseScreen">
     <h1 style="font-size:48px;color:#00d0ff;margin-bottom:10px">一時停止</h1>
-    <p style="color:#ccc;font-family:monospace;font-size:20px;margin:10px 0">殺した人数: <span id="pauseKills">0</span>人</p><button class="btn btn-red" id="pauseResumeBtn">▶ ゲームに戻る</button> <button class="btn" id="pauseTitleBtn" style="margin-top:15px;background:#333;color:#fff">⬅ タイトルに戻る</button>
+    <p style="color:#ccc;font-family:monospace;font-size:20px;margin:10px 0">殺した人数: <span id="pauseKills">0</span>人</p><button class="btn btn-red" id="pauseResumeBtn">▶ ゲームに戻る</button>
+
+<div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+  <button class="btn" id="pauseSaveBtn" style="background:linear-gradient(135deg,#00ff64 0%,#00dd55 100%);border-color:#00ff64;color:#000;">
+    💾 セーブ
+  </button>
+  <button class="btn" id="pauseLoadBtn" style="background:#444;border-color:#777;color:#fff;">
+    ▶ ロード
+  </button>
+</div> 
+
+<!-- 自動セーブトグル -->
+<div style="margin-top:12px;color:#ddd;font-family:monospace;">
+  <label style="display:flex;align-items:center;gap:8px;">
+    <input type="checkbox" id="autosaveToggle">
+    <span>自動セーブを有効にする（選択スロットに一時停止時に保存）</span>
+  </label>
+</div>
+
+<button class="btn" id="pauseTitleBtn" style="margin-top:15px;background:#333;color:#fff">⬅ タイトルに戻る</button>
    </div>
   </div>
+
+  <!-- 上書き確認モーダル -->
+  <div id="overwriteModal" class="modal-backdrop">
+    <div class="modal">
+      <h3>上書き確認</h3>
+      <div id="overwriteMessage">このスロットは既にデータがあります。上書きしますか？</div>
+      <div class="row">
+        <button id="overwriteCancel" class="btn">キャンセル</button>
+        <button id="overwriteConfirm" class="btn btn-red">上書きする</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- スロット名編集モーダル -->
+  <div id="slotNameModal" class="modal-backdrop">
+    <div class="modal">
+      <h3>スロット名を編集</h3>
+      <div style="margin-top:8px;">
+        <input id="slotNameInput" type="text" maxlength="32" style="width:100%;padding:8px;border-radius:4px;border:1px solid #444;background:#000;color:#0f0">
+      </div>
+      <div class="row">
+        <button id="slotNameCancel" class="btn">キャンセル</button>
+        <button id="slotNameSave" class="btn">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
   <script>
+/* ===========================
+   統合版スクリプト（スロット拡張付き）
+   =========================== */
+
 // ==========================================
-// ★ グローバル変数・基本設定
+// ★ ユーティリティ / 初期設定
 // ==========================================
-   function goFullscreen() {
+function goFullscreen() {
   const elem = document.documentElement;
   if (elem.requestFullscreen) elem.requestFullscreen();
   else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
@@ -174,9 +255,11 @@ let waveNumber = 1;
 let waveEnemyCount = 0;
 let waveSpawnTimer = 0;
 let practiceScore = 0;
+// プレイヤー名
+let playerName = localStorage.getItem("tacops_playerName") || "PLAYER";
 
 // ==========================================
-// ★ 武器システム
+// ★ 武器・敵タイプなど
 // ==========================================
 const weapons = [
   { name:"ライフル", damage:30, maxAmmo:30, reloadTime:1500, fireRate:120, tracer:true },
@@ -190,9 +273,6 @@ let ammo = weapons[0].maxAmmo;
 let lastShotTime = 0;
 let isReloading = false;
 
-// ==========================================
-// ★ 敵タイプ定義（改良版）
-// ==========================================
 const ENEMY_TYPES = {
   NORMAL: { name:"ノーマル", health:50, speed:0.04, color:"#cc33aa", fireRate:2000, damage:5 },
   FAST: { name:"ファスト", health:70, speed:0.12, color:"#44ddff", fireRate:800, damage:6 },
@@ -202,93 +282,7 @@ const ENEMY_TYPES = {
 };
 
 // ==========================================
-// ★ UI / 画面管理
-// ==========================================
-function resize(){
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-}
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    if (!isPaused) {
-      openPauseMenu();
-    } else {
-      closePauseMenu();
-    }
-  }
-});
-
-function openPauseMenu() {
-  document.getElementById("pauseScreen").style.display = "flex";
-  isPaused = true;
-}
-
-function closePauseMenu() {
-  document.getElementById("pauseScreen").style.display = "none";
-  isPaused = false;
-  canvas.requestPointerLock();
-}
-document.getElementById("homeBtn").onclick = () => {
-    window.location.href = "../index.html";
-};
-
-document.getElementById("pauseResumeBtn").addEventListener("click", closePauseMenu);
-
-document.getElementById("pauseTitleBtn").addEventListener("click", () => {
-  closePauseMenu();
-  document.getElementById("gameOverScreen").style.display = "none";
-  document.getElementById("startScreen").style.display = "flex";
-  gameRunning = false;
-  resetGameState();
-  document.getElementById("bgm1").volume = 0.25;
-  document.getElementById("bgm1").play();
-});
-
-document.getElementById("backToTitleBtn").addEventListener("click", () => {
-  document.getElementById("gameOverScreen").style.display = "none";
-  document.getElementById("startScreen").style.display = "flex";
-  gameRunning = false;
-  resetGameState();
-  document.getElementById("bgm1").volume = 0.25;
-  document.getElementById("bgm1").play();
-});
-
-document.getElementById("restartBtn").addEventListener("click", () => {
-  document.getElementById("gameOverScreen").style.display = "none";
-  startGame(mode);
-});
-
-// ==========================================
-// ★ ボタンリスナー
-// ==========================================
-document.getElementById("startNormal").addEventListener("click", () => {
-  goFullscreen();
-  startGame("NORMAL");
-});
-
-document.getElementById("startSpeedrun").addEventListener("click", () => {
-  goFullscreen();
-  startGame("SPEEDRUN");
-});
-
-document.getElementById("startSurvival").addEventListener("click", () => {
-  goFullscreen();
-  startGame("SURVIVAL");
-});
-
-document.getElementById("startWave").addEventListener("click", () => {
-  goFullscreen();
-  startGame("WAVE");
-});
-
-document.getElementById("startPractice").addEventListener("click", () => {
-  goFullscreen();
-  startGame("PRACTICE");
-});
-
-// ==========================================
-// ★ 3D投影
+// ★ 3D投影 / マップ / 衝突 / スポーン
 // ==========================================
 function project3D(x, y, z) {
   const dx = x - player.x;
@@ -313,9 +307,6 @@ function project3D(x, y, z) {
   };
 }
 
-// ==========================================
-// ★ マップ生成
-// ==========================================
 function initMap(){
   walls.length = 0;
 
@@ -339,9 +330,6 @@ function initMap(){
   }
 }
 
-// ==========================================
-// ★ 衝突判定
-// ==========================================
 function isColliding(x, z) {
   if (Math.abs(x) > mapSize-1 || Math.abs(z) > mapSize-1) return true;
   for (const w of walls){
@@ -367,9 +355,6 @@ function isEnemyColliding(x, z) {
   return false;
 }
 
-// ==========================================
-// ★ 敵スポーン
-// ==========================================
 function spawnEnemy(typeKey) {
   const type = ENEMY_TYPES[typeKey];
   const x = (Math.random() * 2 - 1) * (mapSize - 5);
@@ -389,13 +374,10 @@ function spawnEnemy(typeKey) {
     targetTimer: 0,
     fireRateMod: type.fireRate,
     stateTimer: 0,
-    state: "patrol" // patrol, chase, flee
+    state: "patrol"
   });
 }
 
-// ==========================================
-// ★ 回復アイテム（立体化版）
-// ==========================================
 function spawnHealItem() {
   const x = (Math.random() * 2 - 1) * (mapSize - 4);
   const z = (Math.random() * 2 - 1) * (mapSize - 4);
@@ -417,11 +399,15 @@ function checkHealPickup() {
       item.taken = true;
       health = Math.min(100, health + 30);
       updateHUD();
-      document.getElementById("sndHeal").play().catch(() => {});
+      const snd = document.getElementById("sndHeal");
+      if (snd) snd.play().catch(()=>{});
     }
   }
 }
 
+// ==========================================
+// ★ 描画（敵・回復アイテム・壁・弾）
+// ==========================================
 function drawHealItem(item) {
   const p = project3D(item.x, item.y, item.z);
   if (!p || p.z <= 0) return null;
@@ -438,7 +424,6 @@ function drawHealItem(item) {
       ctx.translate(p.x, p.y + bob);
       ctx.rotate(item.rotation);
 
-      // 外側の光輪
       const glowGrad = ctx.createRadialGradient(0, 0, size*0.2, 0, 0, size);
       glowGrad.addColorStop(0, `rgba(100,255,150,0.6)`);
       glowGrad.addColorStop(0.5, `rgba(50,255,100,0.3)`);
@@ -446,7 +431,6 @@ function drawHealItem(item) {
       ctx.fillStyle = glowGrad;
       ctx.fillRect(-size, -size, size*2, size*2);
 
-      // コア（立体的なキューブ）
       const faces = [
         { points: [[-4,-4],[4,-4],[4,4],[-4,4]], color: "rgba(100,255,150,0.9)" },
         { points: [[-3,-3],[3,-3],[3,3],[-3,3]], color: "rgba(150,255,180,0.7)" }
@@ -466,7 +450,6 @@ function drawHealItem(item) {
         ctx.stroke();
       });
 
-      // 十字マーク
       ctx.strokeStyle = `rgba(255,255,200,0.9)`;
       ctx.lineWidth = 1;
       ctx.lineCap = "round";
@@ -484,9 +467,6 @@ function drawHealItem(item) {
   };
 }
 
-// ==========================================
-// ★ 敵の描画
-// ==========================================
 function drawEnemy(enemy) {
   const p = project3D(enemy.x, enemy.y, enemy.z);
   if (!p || p.z <= 0) return null;
@@ -501,7 +481,6 @@ function drawEnemy(enemy) {
     draw: () => {
       ctx.save();
 
-      // 身体
       const bodyGrad = ctx.createLinearGradient(p.x - size/2, p.y - size, p.x + size/2, p.y);
       bodyGrad.addColorStop(0, enemy.color);
       bodyGrad.addColorStop(1, `rgba(0,0,0,${0.5 * lightLevel})`);
@@ -512,7 +491,6 @@ function drawEnemy(enemy) {
       ctx.lineWidth = 2;
       ctx.strokeRect(p.x-size/2, p.y-size + bob, size, size*1.5);
 
-      // 頭部（立体的な球体）
       const headSize = size*0.45;
       const headGrad = ctx.createRadialGradient(p.x - headSize*0.2, p.y-size*1.15 + bob - headSize*0.2, headSize*0.2, p.x, p.y-size*1.2 + bob, headSize);
       headGrad.addColorStop(0, `rgba(220,170,120,${0.9 * lightLevel})`);
@@ -526,7 +504,6 @@ function drawEnemy(enemy) {
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // 目
       const eyeY = p.y-size*1.25 + bob;
       ctx.fillStyle = `rgba(50,20,20,${lightLevel})`;
       ctx.beginPath();
@@ -536,7 +513,6 @@ function drawEnemy(enemy) {
       ctx.arc(p.x+size*0.15, eyeY, size*0.12, 0, Math.PI*2);
       ctx.fill();
 
-      // 瞳（状態に応じて色変化）
       const pupilColor = enemy.state === "chase" ? "#ff3333" : enemy.state === "flee" ? "#ffff00" : "#ff9933";
       ctx.fillStyle = pupilColor;
       const pupilOffset = Math.sin(enemy.walkPhase) * size * 0.03;
@@ -547,7 +523,6 @@ function drawEnemy(enemy) {
       ctx.arc(p.x+size*0.15 + pupilOffset, eyeY, size*0.06, 0, Math.PI*2);
       ctx.fill();
 
-      // HPバー
       const hpWidth = size * 1.2;
       const hpHeight = size*0.18;
       const hpY = p.y-size*1.8 + bob;
@@ -571,7 +546,7 @@ function drawEnemy(enemy) {
 }
 
 // ==========================================
-// ★ 射撃
+// ★ 射撃・弾・サウンド
 // ==========================================
 function shoot() {
   if (!gameRunning || isReloading) return;
@@ -585,9 +560,11 @@ function shoot() {
   updateHUD();
 
   const flash = document.querySelector(".muzzle-flash");
-  flash.classList.remove("active");
-  void flash.offsetWidth;
-  flash.classList.add("active");
+  if (flash) {
+    flash.classList.remove("active");
+    void flash.offsetWidth;
+    flash.classList.add("active");
+  }
   playShootSound();
 
   const yaw = player.yaw;
@@ -634,7 +611,8 @@ function reload() {
   const weapon = weapons[currentWeaponIndex];
   if (ammo === weapon.maxAmmo) return;
   isReloading = true;
-  document.getElementById("ammo").textContent = "...";
+  const ammoEl = document.getElementById("ammo");
+  if (ammoEl) ammoEl.textContent = "...";
   setTimeout(() => {
     ammo = weapon.maxAmmo;
     isReloading = false;
@@ -647,7 +625,7 @@ function playShootSound() {
 
     const s = original.cloneNode();
     s.volume = 1.0;
-    s.play();
+    s.play().catch(()=>{});
 }
 
 function playEnemyShootSound() {
@@ -655,10 +633,9 @@ function playEnemyShootSound() {
     if (!original) return;
 
     const s = original.cloneNode();
-    s.volume = 0.6; // 敵は少し小さめ
-    s.play();
+    s.volume = 0.6;
+    s.play().catch(()=>{});
 }
-
 
 // ==========================================
 // ★ プロジェクタイル更新
@@ -669,17 +646,13 @@ function updateProjectiles(dt) {
   for (let i = 0; i < projectiles.length; i++) {
     const p = projectiles[i];
 
-    // ★ 次の位置を計算
     const nextX = p.x + p.vx * dt * 60;
     const nextY = p.y + p.vy * dt * 60;
     const nextZ = p.z + p.vz * dt * 60;
 
-    // ★ 壁衝突（XZ だけ見る）
     if (isColliding(nextX, nextZ)) {
-      p.life = 0;          // 壁に当たったら寿命ゼロ
-      // ここでは continue しない。下の「life<=0」で確実に消す
+      p.life = 0;
     } else {
-      // 壁に当たってないときだけ移動
       p.x = nextX;
       p.y = nextY;
       p.z = nextZ;
@@ -687,17 +660,16 @@ function updateProjectiles(dt) {
 
     p.life -= dt;
 
-    // ★ ここから先は「生きてる弾だけ」処理する
     if (p.life > 0) {
       if (p.owner === "player") {
-        // プレイヤー弾 → 敵にヒット
         for (let j = 0; j < enemies.length; j++) {
           const enemy = enemies[j];
           const dist = Math.hypot(p.x - enemy.x, p.z - enemy.z);
           if (dist < 0.9) {
             enemy.health -= p.damage;
             p.life = 0;
-            document.getElementById("sndHit").play().catch(() => {});
+            const snd = document.getElementById("sndHit");
+            if (snd) snd.play().catch(()=>{});
             if (enemy.health <= 0) {
               enemies.splice(j, 1);
               j--;
@@ -708,7 +680,6 @@ function updateProjectiles(dt) {
           }
         }
       } else {
-        // 敵弾 → プレイヤーにヒット
         const dxp = p.x - player.x;
         const dzp = p.z - player.z;
         if (Math.hypot(dxp, dzp) < 1.0) {
@@ -716,10 +687,13 @@ function updateProjectiles(dt) {
           p.life = 0;
           updateHUD();
           const damageOverlay = document.querySelector(".damage-overlay");
-          damageOverlay.classList.remove("active");
-          void damageOverlay.offsetWidth;
-          damageOverlay.classList.add("active");
-          document.getElementById("sndHurt").play().catch(() => {});
+          if (damageOverlay) {
+            damageOverlay.classList.remove("active");
+            void damageOverlay.offsetWidth;
+            damageOverlay.classList.add("active");
+          }
+          const snd = document.getElementById("sndHurt");
+          if (snd) snd.play().catch(()=>{});
           if (health <= 0) endGame();
         }
       }
@@ -734,8 +708,9 @@ function updateProjectiles(dt) {
     projectiles.splice(removeIdx[i], 1);
   }
 }
+
 // ==========================================
-// ★ 敵AI（改良版：より知能的に）
+// ★ 敵AI（改良版）
 // ==========================================
 function updateEnemies(dt) {
   const now = performance.now();
@@ -743,9 +718,8 @@ function updateEnemies(dt) {
     const dx = player.x - enemy.x;
     const dz = player.z - enemy.z;
     const dist = Math.hypot(dx, dz);
-    const type = ENEMY_TYPES[enemy.type];
+    const type = ENEMY_TYPES[enemy.type] || ENEMY_TYPES.NORMAL;
 
-    // ★ 状態管理
     enemy.stateTimer -= dt;
     if (enemy.stateTimer <= 0) {
       if (dist < 15) {
@@ -760,7 +734,6 @@ function updateEnemies(dt) {
       }
     }
 
-    // ★ 行動実行
     if (enemy.state === "patrol") {
       enemy.targetTimer -= dt;
       if (enemy.targetTimer <= 0) {
@@ -795,19 +768,20 @@ function updateEnemies(dt) {
 
     enemy.walkPhase += enemy.speed * 10 * dt * 60;
 
-    // ★ 接近ダメージ
     if (dist < 0.9) {
       health -= 10 * dt;
       updateHUD();
       const damageOverlay = document.querySelector(".damage-overlay");
-      damageOverlay.classList.remove("active");
-      void damageOverlay.offsetWidth;
-      damageOverlay.classList.add("active");
-      document.getElementById("sndHurt").play().catch(() => {});
+      if (damageOverlay) {
+        damageOverlay.classList.remove("active");
+        void damageOverlay.offsetWidth;
+        damageOverlay.classList.add("active");
+      }
+      const snd = document.getElementById("sndHurt");
+      if (snd) snd.play().catch(()=>{});
       if (health <= 0) endGame();
     }
 
-    // ★ 遠距離射撃
     if (dist < 30 && now - enemy.lastShot > enemy.fireRateMod) {
       enemy.lastShot = now;
       const dy = player.y - enemy.y;
@@ -820,13 +794,13 @@ function updateEnemies(dt) {
         vx,vy,vz,life:3.0,
         owner:enemy,damage:type.damage
       });
-      playShootSound();
+      playEnemyShootSound();
     }
   });
 }
 
 // ==========================================
-// ★ 描画関数
+// ★ 描画補助（床・壁・弾・ミニマップ）
 // ==========================================
 function drawFloorAndSky() {
   const skyGrad = ctx.createLinearGradient(0,0,0,canvas.height/2);
@@ -943,7 +917,7 @@ function drawMinimap() {
 }
 
 // ==========================================
-// ★ プレイヤー更新
+// ★ プレイヤー更新 / HUD / 開始終了
 // ==========================================
 function updatePlayer(dt) {
   let dx=0,dz=0;
@@ -962,22 +936,23 @@ function updatePlayer(dt) {
   }
 }
 
-// ==========================================
-// ★ HUD更新
-// ==========================================
 function updateHUD() {
-  document.getElementById("health").textContent = Math.floor(health);
-  document.getElementById("weaponName").textContent = weapons[currentWeaponIndex].name;
-  document.getElementById("ammo").textContent = ammo;
-  document.getElementById("maxAmmo").textContent = weapons[currentWeaponIndex].maxAmmo;
-  document.getElementById("kills").textContent = kills;
-  document.getElementById("modeName").textContent = mode;
-  document.getElementById("healItemsCount").textContent = healItems.filter(i => !i.taken).length;
+  const healthEl = document.getElementById("health");
+  if (healthEl) healthEl.textContent = Math.floor(health);
+  const weaponNameEl = document.getElementById("weaponName");
+  if (weaponNameEl) weaponNameEl.textContent = weapons[currentWeaponIndex].name;
+  const ammoEl = document.getElementById("ammo");
+  if (ammoEl) ammoEl.textContent = ammo;
+  const maxAmmoEl = document.getElementById("maxAmmo");
+  if (maxAmmoEl) maxAmmoEl.textContent = weapons[currentWeaponIndex].maxAmmo;
+  const killsEl = document.getElementById("kills");
+  if (killsEl) killsEl.textContent = kills;
+  const modeEl = document.getElementById("modeName");
+  if (modeEl) modeEl.textContent = mode;
+  const healCountEl = document.getElementById("healItemsCount");
+  if (healCountEl) healCountEl.textContent = healItems.filter(i => !i.taken).length;
 }
 
-// ==========================================
-// ★ ゲーム開始 / 終了
-// ==========================================
 function startGame(selectedMode) {
   mode = selectedMode;
   health = 100;
@@ -1004,28 +979,26 @@ function startGame(selectedMode) {
   initMap();
   updateHUD();
 
-  document.getElementById("startScreen").style.display = "none";
-  document.getElementById("gameOverScreen").style.display = "none";
+  const start = document.getElementById("startScreen");
+  if (start) start.style.display = "none";
+  const gameOver = document.getElementById("gameOverScreen");
+  if (gameOver) gameOver.style.display = "none";
 
   gameRunning = true;
 
-  // BGM
   const bgm1 = document.getElementById("bgm1");
   const bgm2 = document.getElementById("bgm2");
   const bgm3 = document.getElementById("bgm3");
-  bgm1.pause(); bgm1.currentTime = 0;
-  bgm2.pause(); bgm2.currentTime = 0;
-  bgm3.pause(); bgm3.currentTime = 0;
+  if (bgm1) { bgm1.pause(); bgm1.currentTime = 0; }
+  if (bgm2) { bgm2.pause(); bgm2.currentTime = 0; }
+  if (bgm3) { bgm3.pause(); bgm3.currentTime = 0; }
 
   if (Math.random() < 0.5) {
-    bgm2.volume = 0.25;
-    bgm2.play().catch(() => {});
+    if (bgm2) { bgm2.volume = 0.25; bgm2.play().catch(()=>{}); }
   } else {
-    bgm3.volume = 0.25;
-    bgm3.play().catch(() => {});
+    if (bgm3) { bgm3.volume = 0.25; bgm3.play().catch(()=>{}); }
   }
 
-  // モード別初期化
   if (mode === "NORMAL") {
     for (let i = 0; i < 8; i++) spawnEnemy("NORMAL");
   } else if (mode === "SPEEDRUN") {
@@ -1043,10 +1016,14 @@ function startGame(selectedMode) {
     for (let i = 0; i < 3; i++) spawnEnemy("NORMAL");
   }
 
-  document.getElementById("timerBox").style.display = mode === "SPEEDRUN" ? "block" : "none";
-  document.getElementById("surviveBox").style.display = mode === "SURVIVAL" ? "block" : "none";
-  document.getElementById("waveBox").style.display = mode === "WAVE" ? "block" : "none";
-  document.getElementById("bossHpBox").style.display = "none";
+  const timerBox = document.getElementById("timerBox");
+  if (timerBox) timerBox.style.display = mode === "SPEEDRUN" ? "block" : "none";
+  const surviveBox = document.getElementById("surviveBox");
+  if (surviveBox) surviveBox.style.display = mode === "SURVIVAL" ? "block" : "none";
+  const waveBox = document.getElementById("waveBox");
+  if (waveBox) waveBox.style.display = mode === "WAVE" ? "block" : "none";
+  const bossHpBox = document.getElementById("bossHpBox");
+  if (bossHpBox) bossHpBox.style.display = "none";
 
   canvas.requestPointerLock?.();
 }
@@ -1054,8 +1031,10 @@ function startGame(selectedMode) {
 function endGame() {
   gameRunning = false;
   document.exitPointerLock?.();
-  document.getElementById("finalKills").textContent = kills;
-  document.getElementById("gameOverScreen").style.display = "flex";
+  const finalKills = document.getElementById("finalKills");
+  if (finalKills) finalKills.textContent = kills;
+  const gameOver = document.getElementById("gameOverScreen");
+  if (gameOver) gameOver.style.display = "flex";
 }
 
 function resetGameState() {
@@ -1072,61 +1051,352 @@ function resetGameState() {
 }
 
 // ==========================================
-// ★ ゲームループ
+// ★ セーブ / ロード（localStorage と スロット）
 // ==========================================
+function applyPlayerName() {
+    const input = document.getElementById("playerNameInput");
+    if (input) {
+        playerName = input.value.trim() || "PLAYER";
+        localStorage.setItem("tacops_playerName", playerName);
+    }
+    const label = document.getElementById("playerNameLabel");
+    if (label) label.textContent = playerName;
+}
+
+function saveGame() {
+    const data = {
+        player: {
+            x: player.x,
+            y: player.y,
+            z: player.z,
+            yaw: player.yaw,
+            pitch: player.pitch,
+            health: health,
+            weaponIndex: currentWeaponIndex,
+            ammo: ammo
+        },
+
+        playerName: playerName,
+        mode: mode,
+
+        enemies: enemies.map(e => ({
+            x: e.x,
+            y: e.y,
+            z: e.z,
+            health: e.health,
+            type: e.type,
+            state: e.state,
+            targetX: e.targetX,
+            targetZ: e.targetZ,
+            lastShot: e.lastShot,
+            walkPhase: e.walkPhase
+        })),
+
+        healItems: healItems.map(h => ({
+            x: h.x,
+            y: h.y,
+            z: h.z,
+            taken: h.taken,
+            size: h.size,
+            rotation: h.rotation
+        })),
+
+        walls: walls,
+
+        waveNumber: waveNumber,
+        waveEnemyCount: waveEnemyCount,
+        survivalTime: survivalTime,
+        speedrunStart: speedrunStart
+    };
+
+    localStorage.setItem("tacops_save", JSON.stringify(data));
+    localStorage.setItem("tacops_playerName", playerName);
+
+    alert("セーブ完了");
+}
+
+// 共通復元関数
+function loadGameFromData(data) {
+  if (!data || !data.player) {
+    alert("不正なセーブデータです");
+    return;
+  }
+
+  player.x = data.player.x ?? player.x;
+  player.y = data.player.y ?? player.y;
+  player.z = data.player.z ?? player.z;
+  player.yaw = data.player.yaw ?? player.yaw;
+  player.pitch = data.player.pitch ?? player.pitch;
+  health = data.player.health ?? health;
+  currentWeaponIndex = data.player.weaponIndex ?? currentWeaponIndex;
+  ammo = data.player.ammo ?? ammo;
+
+  playerName = data.playerName || playerName;
+  const nameLabel = document.getElementById("playerNameLabel");
+  if (nameLabel) nameLabel.textContent = playerName;
+
+  mode = data.mode || mode;
+
+  enemies = (data.enemies || []).map(e => ({
+    x: e.x,
+    y: e.y ?? 1.5,
+    z: e.z,
+    health: e.health ?? (ENEMY_TYPES[e.type]?.health || 50),
+    maxHealth: e.maxHealth ?? (ENEMY_TYPES[e.type]?.health || 50),
+    speed: e.speed ?? (ENEMY_TYPES[e.type]?.speed || 0.04),
+    type: e.type || "NORMAL",
+    color: e.color || (ENEMY_TYPES[e.type]?.color || "#cc33aa"),
+    lastShot: e.lastShot || 0,
+    walkPhase: e.walkPhase || (Math.random() * Math.PI * 2),
+    targetX: e.targetX ?? e.x,
+    targetZ: e.targetZ ?? e.z,
+    targetTimer: e.targetTimer || 0,
+    fireRateMod: e.fireRateMod || (ENEMY_TYPES[e.type]?.fireRate || 1000),
+    stateTimer: e.stateTimer || 0,
+    state: e.state || "patrol"
+  }));
+
+  healItems = (data.healItems || []).map(h => ({
+    x: h.x,
+    y: h.y ?? 0.5,
+    z: h.z,
+    size: h.size ?? 0.5,
+    taken: h.taken || false,
+    rotation: h.rotation || 0
+  }));
+
+  walls = data.walls || walls;
+
+  waveNumber = data.waveNumber ?? waveNumber;
+  waveEnemyCount = data.waveEnemyCount ?? waveEnemyCount;
+  survivalTime = data.survivalTime ?? survivalTime;
+  speedrunStart = data.speedrunStart ?? speedrunStart;
+
+  updateHUD();
+
+  const start = document.getElementById("startScreen");
+  if (start) start.style.display = "none";
+  const gameOver = document.getElementById("gameOverScreen");
+  if (gameOver) gameOver.style.display = "none";
+  const pause = document.getElementById("pauseScreen");
+  if (pause) pause.style.display = "none";
+
+  gameRunning = true;
+}
+
+// localStorage からロード
+function loadGame() {
+  const json = localStorage.getItem("tacops_save");
+  if (!json) {
+    alert("セーブデータがありません");
+    return;
+  }
+  try {
+    const data = JSON.parse(json);
+    loadGameFromData(data);
+  } catch (err) {
+    console.error(err);
+    alert("セーブデータの読み込みに失敗しました");
+  }
+}
+
+// JSON ファイル保存 / ダウンロード
+function downloadJSON(filename, dataObj) {
+  const jsonStr = JSON.stringify(dataObj, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function saveGameToFile() {
+  const data = {
+    player: {
+      x: player.x, y: player.y, z: player.z,
+      yaw: player.yaw, pitch: player.pitch,
+      health: health, weaponIndex: currentWeaponIndex, ammo: ammo
+    },
+    playerName: playerName,
+    mode: mode,
+    enemies: enemies.map(e => ({
+      x: e.x, y: e.y, z: e.z, health: e.health, maxHealth: e.maxHealth,
+      type: e.type, color: e.color, lastShot: e.lastShot, walkPhase: e.walkPhase,
+      targetX: e.targetX, targetZ: e.targetZ, state: e.state
+    })),
+    healItems: healItems.map(h => ({
+      x: h.x, y: h.y, z: h.z, taken: h.taken, size: h.size, rotation: h.rotation
+    })),
+    walls: walls,
+    waveNumber: waveNumber,
+    waveEnemyCount: waveEnemyCount,
+    survivalTime: survivalTime,
+    speedrunStart: speedrunStart
+  };
+
+  downloadJSON("tacops_save.json", data);
+}
+
+// ==========================================
+// ★ セーブスロット機能（localStorage）
+// ==========================================
+const SLOT_KEY_PREFIX = "tacops_slot_"; // slot 1..3
+let currentSlotSelection = 0; // 0 = none
+
+function saveToSlot(slot, force=false, slotName=null) {
+  const key = SLOT_KEY_PREFIX + slot;
+  const existing = localStorage.getItem(key);
+  if (existing && !force) {
+    // show overwrite modal
+    showOverwriteModal(slot);
+    return false;
+  }
+
+  const data = {
+    player: {
+      x: player.x, y: player.y, z: player.z,
+      yaw: player.yaw, pitch: player.pitch,
+      health: health, weaponIndex: currentWeaponIndex, ammo: ammo
+    },
+    playerName: playerName,
+    mode: mode,
+    enemies: enemies.map(e => ({
+      x: e.x, y: e.y, z: e.z, health: e.health, maxHealth: e.maxHealth,
+      type: e.type, color: e.color, lastShot: e.lastShot, walkPhase: e.walkPhase,
+      targetX: e.targetX, targetZ: e.targetZ, state: e.state
+    })),
+    healItems: healItems.map(h => ({ x: h.x, y: h.y, z: h.z, taken: h.taken, size: h.size, rotation: h.rotation })),
+    walls: walls,
+    waveNumber: waveNumber,
+    waveEnemyCount: waveEnemyCount,
+    survivalTime: survivalTime,
+    speedrunStart: speedrunStart,
+    savedAt: Date.now(),
+    slotName: slotName ?? (existing ? (JSON.parse(existing).slotName || null) : null)
+  };
+
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    updateSlotButtons();
+    return true;
+  } catch (e) {
+    console.error("slot save failed", e);
+    return false;
+  }
+}
+
+function loadFromSlot(slot) {
+  const key = SLOT_KEY_PREFIX + slot;
+  const json = localStorage.getItem(key);
+  if (!json) {
+    alert("セーブスロット " + slot + " は空です");
+    return false;
+  }
+  try {
+    const data = JSON.parse(json);
+    loadGameFromData(data);
+    return true;
+  } catch (e) {
+    console.error("slot load failed", e);
+    alert("セーブデータの読み込みに失敗しました");
+    return false;
+  }
+}
+
+function updateSlotButtons() {
+  for (let i = 1; i <= 3; i++) {
+    const btn = document.getElementById("slotBtn" + i);
+    if (!btn) continue;
+    const json = localStorage.getItem(SLOT_KEY_PREFIX + i);
+    if (!json) {
+      btn.textContent = `Slot ${i}: 空`;
+      btn.title = "右クリックでセーブ / ダブルクリックでロード / クリックで選択";
+    } else {
+      try {
+        const data = JSON.parse(json);
+        const date = data.savedAt ? new Date(data.savedAt) : null;
+        const label = data.slotName ? data.slotName : (date ? `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()} ${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}` : "保存済");
+        btn.textContent = `Slot ${i}: ${label}`;
+        btn.title = "右クリックでセーブ / ダブルクリックでロード / クリックで選択 / 右ダブルクリックで名前編集";
+      } catch {
+        btn.textContent = `Slot ${i}: 不明`;
+      }
+    }
+    // visual selection
+    if (currentSlotSelection === i) btn.classList.add("slot-selected");
+    else btn.classList.remove("slot-selected");
+  }
+}
+
+function selectSlot(slot) {
+  currentSlotSelection = slot;
+  updateSlotButtons();
+}
+
+// Overwrite modal helpers
+let _pendingOverwriteSlot = null;
+function showOverwriteModal(slot) {
+  _pendingOverwriteSlot = slot;
+  const modal = document.getElementById("overwriteModal");
+  const msg = document.getElementById("overwriteMessage");
+  const json = localStorage.getItem(SLOT_KEY_PREFIX + slot);
+  let label = "このスロットは既にデータがあります。上書きしますか？";
+  if (json) {
+    try {
+      const data = JSON.parse(json);
+      const date = data.savedAt ? new Date(data.savedAt) : null;
+      const name = data.slotName || null;
+      label = `Slot ${slot} を上書きしますか？ ${name ? "["+name+"] " : ""}${date ? date.toLocaleString() : ""}`;
+    } catch {}
+  }
+  if (msg) msg.textContent = label;
+  if (modal) modal.style.display = "flex";
+}
+
+function hideOverwriteModal() {
+  const modal = document.getElementById("overwriteModal");
+  if (modal) modal.style.display = "none";
+  _pendingOverwriteSlot = null;
+}
+
+// Slot name edit modal
+let _pendingEditSlot = null;
+function showSlotNameModal(slot) {
+  _pendingEditSlot = slot;
+  const modal = document.getElementById("slotNameModal");
+  const input = document.getElementById("slotNameInput");
+  const json = localStorage.getItem(SLOT_KEY_PREFIX + slot);
+  let name = "";
+  if (json) {
+    try {
+      const data = JSON.parse(json);
+      name = data.slotName || "";
+    } catch {}
+  }
+  if (input) input.value = name;
+  if (modal) modal.style.display = "flex";
+}
+function hideSlotNameModal() {
+  const modal = document.getElementById("slotNameModal");
+  if (modal) modal.style.display = "none";
+  _pendingEditSlot = null;
+}
+
+// ==========================================
+// ★ ゲームループ / 描画ループ
+// ==========================================
+function resize(){
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+}
+
 function gameLoop(now) {
   const dt = Math.min((now - lastTime)/1000, 0.016);
   lastTime = now;
-
-  if (gameRunning && !isPaused) {
-    updatePlayer(dt);
-    updateEnemies(dt);
-    updateProjectiles(dt);
-    checkHealPickup();
-
-    // ★ 回復アイテム：15秒ごとに1個スポーン
-    healSpawnTimer += dt;
-    if (healSpawnTimer > 15) {
-      healSpawnTimer = 0;
-      spawnHealItem();
-    }
-
-    // ★ モード別ロジック
-    if (mode === "SPEEDRUN") {
-      const elapsed = (now - speedrunStart) / 1000;
-      document.getElementById("timer").textContent = elapsed.toFixed(2);
-      if (enemies.length === 0 && kills >= 10) {
-        endGame();
-      }
-    } else if (mode === "SURVIVAL") {
-      const elapsed = (now - survivalStart) / 1000;
-      document.getElementById("surviveTime").textContent = elapsed.toFixed(2);
-      if (enemies.length < 3) {
-        spawnEnemy(Math.random() < 0.3 ? "SHOOTER" : "FAST");
-      }
-    } else if (mode === "WAVE") {
-      waveSpawnTimer += dt;
-      if (enemies.length === 0 && waveSpawnTimer > 2) {
-        waveNumber++;
-        waveEnemyCount = 3 + waveNumber * 2;
-        waveSpawnTimer = 0;
-        for (let i = 0; i < waveEnemyCount; i++) {
-          spawnEnemy(Math.random() < 0.4 ? "FAST" : Math.random() < 0.5 ? "HEAVY" : "SHOOTER");
-        }
-        if (waveNumber % 5 === 0) spawnEnemy("BOSS");
-        document.getElementById("waveNumber").textContent = waveNumber;
-      }
-    } else if (mode === "PRACTICE") {
-      if (enemies.length < 2) {
-        spawnEnemy("NORMAL");
-      }
-      document.getElementById("kills").textContent = `スコア: ${kills * 100}`;
-    } else if (mode === "NORMAL") {
-      if (enemies.length === 0) {
-        endGame();
-      }
-    }
-  }
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawFloorAndSky();
@@ -1156,13 +1426,319 @@ function gameLoop(now) {
   drawProjectiles();
   drawMinimap();
 
+  if (gameRunning && !isPaused) {
+    updatePlayer(dt);
+    updateEnemies(dt);
+    updateProjectiles(dt);
+    checkHealPickup();
+
+    healSpawnTimer += dt;
+    if (healSpawnTimer > 15) {
+      healSpawnTimer = 0;
+      spawnHealItem();
+    }
+
+    if (mode === "SPEEDRUN") {
+      const elapsed = (now - speedrunStart) / 1000;
+      const timerEl = document.getElementById("timer");
+      if (timerEl) timerEl.textContent = elapsed.toFixed(2);
+      if (enemies.length === 0 && kills >= 10) {
+        endGame();
+      }
+    } else if (mode === "SURVIVAL") {
+      const elapsed = (now - survivalStart) / 1000;
+      const surviveEl = document.getElementById("surviveTime");
+      if (surviveEl) surviveEl.textContent = elapsed.toFixed(2);
+      if (enemies.length < 3) {
+        spawnEnemy(Math.random() < 0.3 ? "SHOOTER" : "FAST");
+      }
+    } else if (mode === "WAVE") {
+      waveSpawnTimer += dt;
+      if (enemies.length === 0 && waveSpawnTimer > 2) {
+        waveNumber++;
+        waveEnemyCount = 3 + waveNumber * 2;
+        waveSpawnTimer = 0;
+        for (let i = 0; i < waveEnemyCount; i++) {
+          spawnEnemy(Math.random() < 0.4 ? "FAST" : Math.random() < 0.5 ? "HEAVY" : "SHOOTER");
+        }
+        if (waveNumber % 5 === 0) spawnEnemy("BOSS");
+        const waveEl = document.getElementById("waveNumber");
+        if (waveEl) waveEl.textContent = waveNumber;
+      }
+    } else if (mode === "PRACTICE") {
+      if (enemies.length < 2) {
+        spawnEnemy("NORMAL");
+      }
+      const killsEl = document.getElementById("kills");
+      if (killsEl) killsEl.textContent = `スコア: ${kills * 100}`;
+    } else if (mode === "NORMAL") {
+      if (enemies.length === 0) {
+        endGame();
+      }
+    }
+  }
+
   requestAnimationFrame(gameLoop);
 }
 
 // ==========================================
-// ★ イベント登録
+// ★ イベント登録（DOMContentLoaded で保護）
+// ==========================================
+document.addEventListener("DOMContentLoaded", () => {
+  // ファイルロード UI
+  const loadFileBtnEl = document.getElementById("loadFileBtn");
+  const loadFileInputEl = document.getElementById("loadFileInput");
+  if (loadFileBtnEl && loadFileInputEl) {
+    loadFileBtnEl.onclick = () => {
+      loadFileInputEl.value = "";
+      loadFileInputEl.click();
+    };
+    loadFileInputEl.addEventListener("change", function () {
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          loadGameFromData(data);
+          alert("JSON からロードしました");
+        } catch (err) {
+          console.error(err);
+          alert("JSON の読み込みに失敗しました");
+        }
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  const saveFileBtn = document.getElementById("saveFileBtn");
+  if (saveFileBtn) saveFileBtn.onclick = () => saveGameToFile();
+
+  const loadGameBtn = document.getElementById("loadGameBtn");
+  if (loadGameBtn) loadGameBtn.onclick = () => { applyPlayerName(); loadGame(); };
+
+  const pauseSaveBtn = document.getElementById("pauseSaveBtn");
+  if (pauseSaveBtn) pauseSaveBtn.onclick = () => {
+    // If a slot is selected, save to it (with confirmation)
+    if (currentSlotSelection >= 1 && currentSlotSelection <= 3) {
+      saveToSlot(currentSlotSelection);
+      alert("選択スロットにセーブしました");
+    } else {
+      saveGame();
+    }
+  };
+
+  const pauseLoadBtn = document.getElementById("pauseLoadBtn");
+  if (pauseLoadBtn) pauseLoadBtn.onclick = () => {
+    if (currentSlotSelection >= 1 && currentSlotSelection <= 3) {
+      loadFromSlot(currentSlotSelection);
+    } else {
+      loadGame();
+    }
+  };
+
+  const homeBtn = document.getElementById("homeBtn");
+  if (homeBtn) homeBtn.onclick = () => { window.location.href = "../index.html"; };
+
+  const restartBtn = document.getElementById("restartBtn");
+  if (restartBtn) restartBtn.addEventListener("click", () => startGame(mode));
+
+  const pauseResumeBtn = document.getElementById("pauseResumeBtn");
+  if (pauseResumeBtn) pauseResumeBtn.addEventListener("click", () => {
+    const pause = document.getElementById("pauseScreen");
+    if (pause) pause.style.display = "none";
+    isPaused = false;
+    canvas.requestPointerLock?.();
+  });
+
+  const pauseTitleBtn = document.getElementById("pauseTitleBtn");
+  if (pauseTitleBtn) pauseTitleBtn.addEventListener("click", () => {
+    const pause = document.getElementById("pauseScreen");
+    if (pause) pause.style.display = "none";
+    const gameOver = document.getElementById("gameOverScreen");
+    if (gameOver) gameOver.style.display = "none";
+    const start = document.getElementById("startScreen");
+    if (start) start.style.display = "flex";
+    gameRunning = false;
+    resetGameState();
+    const bgm1 = document.getElementById("bgm1");
+    if (bgm1) { bgm1.volume = 0.25; bgm1.play().catch(()=>{}); }
+  });
+
+  const backToTitleBtn = document.getElementById("backToTitleBtn");
+  if (backToTitleBtn) backToTitleBtn.addEventListener("click", () => {
+    const gameOver = document.getElementById("gameOverScreen");
+    if (gameOver) gameOver.style.display = "none";
+    const start = document.getElementById("startScreen");
+    if (start) start.style.display = "flex";
+    gameRunning = false;
+    resetGameState();
+    const bgm1 = document.getElementById("bgm1");
+    if (bgm1) { bgm1.volume = 0.25; bgm1.play().catch(()=>{}); }
+  });
+
+  const sNormal = document.getElementById("startNormal");
+  if (sNormal) sNormal.addEventListener("click", () => { goFullscreen(); startGame("NORMAL"); });
+  const sSpeed = document.getElementById("startSpeedrun");
+  if (sSpeed) sSpeed.addEventListener("click", () => { goFullscreen(); startGame("SPEEDRUN"); });
+  const sSurv = document.getElementById("startSurvival");
+  if (sSurv) sSurv.addEventListener("click", () => { goFullscreen(); startGame("SURVIVAL"); });
+  const sWave = document.getElementById("startWave");
+  if (sWave) sWave.addEventListener("click", () => { goFullscreen(); startGame("WAVE"); });
+  const sPractice = document.getElementById("startPractice");
+  if (sPractice) sPractice.addEventListener("click", () => { goFullscreen(); startGame("PRACTICE"); });
+
+  // slot buttons: click select, double-click load, right-click save, right-double-click edit name
+  for (let i = 1; i <= 3; i++) {
+    const btn = document.getElementById("slotBtn" + i);
+    if (!btn) continue;
+    // click -> select
+    btn.addEventListener("click", () => {
+      selectSlot(i);
+    });
+    // double click -> load
+    btn.addEventListener("dblclick", () => {
+      loadFromSlot(i);
+    });
+    // right click -> save (with overwrite confirmation)
+    btn.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+      // if slot exists, show overwrite modal; else save directly
+      const key = SLOT_KEY_PREFIX + i;
+      const existing = localStorage.getItem(key);
+      if (existing) {
+        showOverwriteModal(i);
+      } else {
+        saveToSlot(i, true);
+        updateSlotButtons();
+        alert("Slot " + i + " にセーブしました");
+      }
+    });
+    // shift+rightclick -> edit name
+    btn.addEventListener("auxclick", (ev) => {
+      // auxclick catches middle/right in some browsers; use ctrl/shift+click as alternative
+    });
+    // alt+click to edit name (accessible)
+    btn.addEventListener("click", (ev) => {
+      if (ev.altKey) {
+        showSlotNameModal(i);
+      }
+    });
+  }
+
+  // overwrite modal buttons
+  const overwriteConfirm = document.getElementById("overwriteConfirm");
+  const overwriteCancel = document.getElementById("overwriteCancel");
+  if (overwriteConfirm) overwriteConfirm.addEventListener("click", () => {
+    if (_pendingOverwriteSlot) {
+      saveToSlot(_pendingOverwriteSlot, true);
+      updateSlotButtons();
+      alert("上書き保存しました");
+    }
+    hideOverwriteModal();
+  });
+  if (overwriteCancel) overwriteCancel.addEventListener("click", () => {
+    hideOverwriteModal();
+  });
+
+  // slot name modal buttons
+  const slotNameSave = document.getElementById("slotNameSave");
+  const slotNameCancel = document.getElementById("slotNameCancel");
+  if (slotNameSave) slotNameSave.addEventListener("click", () => {
+    const input = document.getElementById("slotNameInput");
+    if (!_pendingEditSlot) { hideSlotNameModal(); return; }
+    const name = input ? input.value.trim() : "";
+    // load existing data, set slotName, save back
+    const key = SLOT_KEY_PREFIX + _pendingEditSlot;
+    const json = localStorage.getItem(key);
+    if (!json) {
+      // create minimal save with name
+      saveToSlot(_pendingEditSlot, true, name);
+    } else {
+      try {
+        const data = JSON.parse(json);
+        data.slotName = name;
+        localStorage.setItem(key, JSON.stringify(data));
+      } catch {
+        // fallback: overwrite with minimal
+        saveToSlot(_pendingEditSlot, true, name);
+      }
+    }
+    updateSlotButtons();
+    hideSlotNameModal();
+  });
+  if (slotNameCancel) slotNameCancel.addEventListener("click", () => {
+    hideSlotNameModal();
+  });
+
+  // autosave toggle
+  const autosaveToggle = document.getElementById("autosaveToggle");
+  const autosaveStored = localStorage.getItem("tacops_autosave");
+  if (autosaveToggle) {
+    autosaveToggle.checked = autosaveStored === "1";
+    autosaveToggle.addEventListener("change", () => {
+      localStorage.setItem("tacops_autosave", autosaveToggle.checked ? "1" : "0");
+    });
+  }
+
+  // player name input change
+  const playerNameInput = document.getElementById("playerNameInput");
+  if (playerNameInput) {
+    playerNameInput.addEventListener("change", () => {
+      applyPlayerName();
+    });
+  }
+
+  // initialize slot buttons
+  updateSlotButtons();
+
+  // wrap openPauseMenu to include autosave behavior
+  const origOpenPause = window.openPauseMenu;
+  window.openPauseMenu = function() {
+    const pause = document.getElementById("pauseScreen");
+    if (pause) pause.style.display = "flex";
+    isPaused = true;
+    // autosave if enabled and slot selected
+    const autosave = localStorage.getItem("tacops_autosave") === "1";
+    if (autosave && currentSlotSelection >= 1 && currentSlotSelection <= 3) {
+      saveToSlot(currentSlotSelection, true);
+      updateSlotButtons();
+    }
+    if (typeof origOpenPause === "function") origOpenPause();
+  };
+
+  // ensure closePauseMenu exists
+  if (!window.closePauseMenu) {
+    window.closePauseMenu = function() {
+      const pause = document.getElementById("pauseScreen");
+      if (pause) pause.style.display = "none";
+      isPaused = false;
+    };
+  }
+});
+
+// ==========================================
+// ★ キーボード・マウス・ポインタロック
 // ==========================================
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    if (!isPaused) {
+      const pause = document.getElementById("pauseScreen");
+      if (pause) pause.style.display = "flex";
+      isPaused = true;
+      // autosave on pause if enabled
+      const autosave = localStorage.getItem("tacops_autosave") === "1";
+      if (autosave && currentSlotSelection >= 1 && currentSlotSelection <= 3) {
+        saveToSlot(currentSlotSelection, true);
+        updateSlotButtons();
+      }
+    } else {
+      const pause = document.getElementById("pauseScreen");
+      if (pause) pause.style.display = "none";
+      isPaused = false;
+      canvas.requestPointerLock?.();
+    }
+  }
   const key = e.key.toLowerCase();
   if (key in keys) keys[key] = true;
   if (key === "r") reload();
@@ -1198,10 +1774,6 @@ canvas.addEventListener("click", () => {
   if (gameRunning && !isPaused) shoot();
 });
 
-document.getElementById("restartBtn").addEventListener("click", () => {
-  startGame(mode);
-});
-
 window.addEventListener("resize", resize);
 
 window.addEventListener("load", () => {
@@ -1210,7 +1782,6 @@ window.addEventListener("load", () => {
   updateHUD();
   requestAnimationFrame(gameLoop);
 });
-</script>
+  </script>
 </body>
 </html>
-

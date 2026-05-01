@@ -30,6 +30,7 @@
     #fireBtn{position:absolute;right:6%;bottom:18%;width:84px;height:84px;border-radius:50%;background:rgba(255,80,80,0.12);pointer-events:auto;border:2px solid rgba(255,80,80,0.18);font-weight:bold}
     #reloadBtn{position:absolute;right:6%;bottom:6%;width:64px;height:64px;border-radius:8px;background:rgba(255,255,255,0.04);pointer-events:auto;border:1px solid rgba(255,255,255,0.06)}
     @media (max-width:600px){ #joyLeft{width:96px;height:96px;left:5%} #fireBtn{width:72px;height:72px;right:5%} }
+    .slot-selected{outline:3px solid rgba(0,255,120,0.6)}
   </style>
 </head>
 <body>
@@ -82,10 +83,22 @@
     </div>
   </div>
 
+  <!-- audio (missing files will be handled gracefully) -->
+  <audio id="sndHit" src="hit.mp3"></audio>
+  <audio id="sndHurt" src="hurt.mp3"></audio>
+  <audio id="sndHeal" src="heal.mp3"></audio>
+  <audio id="bgm2" src="bgm2.mp3" loop></audio>
+  <audio id="bgm3" src="bgm3.mp3" loop></audio>
+  <audio id="sndShootPlayer" src="player_shoot.mp3"></audio>
+  <audio id="sndShootEnemy" src="enemy_shoot.mp3"></audio>
+
   <script>
-  // Mobile-focused FPS with save/load (IndexedDB fallback to localStorage)
+  // ===========================
+  // Full game script with Save/Load (IndexedDB + localStorage fallback)
+  // Minimal changes from your original code: added storage and UI wiring
+  // ===========================
   (function(){
-    // --- Rendering & performance ---
+    // --- Canvas scale & helpers ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     function applyRenderScale(){
@@ -98,18 +111,18 @@
     window.addEventListener('resize', applyRenderScale);
     applyRenderScale();
 
+    // --- Core state ---
     let lastTime = performance.now();
+    let lastFrameTime = performance.now();
     let targetFPS = /Android|iPhone|iPad/.test(navigator.userAgent) ? 30 : 60;
     let frameInterval = 1000/targetFPS;
-    let lastFrameTime = performance.now();
 
-    // --- Game state (kept compact) ---
     const mapSize = 30;
-    const player = { x:0,y:1.5,z:0,yaw:0,pitch:0,speed:0.18,radius:0.4 };
-    let health=100,kills=0,mode="NORMAL",gameRunning=false,isPaused=false;
-    let walls=[],enemies=[],projectiles=[],healItems=[];
-    let currentWeaponIndex=0,ammo=30,isReloading=false,lastShotTime=0;
-    let healSpawnTimer=0,waveNumber=1,waveSpawnTimer=0,speedrunStart=0,survivalStart=0;
+    const player = { x:0, y:1.5, z:0, yaw:0, pitch:0, speed:0.18, radius:0.4 };
+    let health = 100, kills = 0, mode = "NORMAL", gameRunning = false, isPaused = false;
+    let walls = [], enemies = [], projectiles = [], healItems = [];
+    let currentWeaponIndex = 0, ammo = 30, isReloading = false, lastShotTime = 0;
+    let healSpawnTimer = 0, waveNumber = 1, waveSpawnTimer = 0, speedrunStart = 0, survivalStart = 0;
     let playerName = localStorage.getItem('tacops_playerName') || 'PLAYER';
     document.getElementById('playerNameLabel').textContent = playerName;
     document.getElementById('playerNameInput').value = playerName;
@@ -129,71 +142,66 @@
       BOSS:{health:800,speed:0.04,color:'#ff8800',fireRate:500,damage:20}
     };
 
-    // --- Storage: IndexedDB with localStorage fallback ---
+    // --- Storage wrapper (IndexedDB primary, localStorage fallback) ---
     const Storage = (() => {
-      const DB = 'tacops_db', STORE='saves';
+      const DB = 'tacops_db', STORE = 'saves';
       let dbp = null;
       function openDB(){
         if(dbp) return dbp;
-        dbp = new Promise((res,rej)=>{
-          try{
-            const r = indexedDB.open(DB,1);
-            r.onupgradeneeded = ()=> r.result.createObjectStore(STORE);
-            r.onsuccess = ()=> res(r.result);
-            r.onerror = ()=> rej(r.error);
-          }catch(e){ rej(e); }
+        dbp = new Promise((res, rej) => {
+          try {
+            const req = indexedDB.open(DB, 1);
+            req.onupgradeneeded = () => { req.result.createObjectStore(STORE); };
+            req.onsuccess = () => res(req.result);
+            req.onerror = () => rej(req.error);
+          } catch (e) { rej(e); }
         });
         return dbp;
       }
-      async function set(key,val){
-        try{
+      async function set(key, val){
+        try {
           const db = await openDB();
-          return new Promise((res,rej)=>{
-            const tx = db.transaction(STORE,'readwrite');
+          return new Promise((res, rej) => {
+            const tx = db.transaction(STORE, 'readwrite');
             const s = tx.objectStore(STORE);
-            const rq = s.put(val,key);
-            rq.onsuccess = ()=> res(true);
-            rq.onerror = ()=> rej(rq.error);
+            const rq = s.put(val, key);
+            rq.onsuccess = () => res(true);
+            rq.onerror = () => rej(rq.error);
           });
-        }catch(e){
-          try{ localStorage.setItem(key,JSON.stringify(val)); return true; }catch{ return false; }
+        } catch (e) {
+          try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; }
         }
       }
       async function get(key){
-        try{
+        try {
           const db = await openDB();
-          return new Promise((res,rej)=>{
-            const tx = db.transaction(STORE,'readonly');
+          return new Promise((res, rej) => {
+            const tx = db.transaction(STORE, 'readonly');
             const s = tx.objectStore(STORE);
             const rq = s.get(key);
-            rq.onsuccess = ()=> res(rq.result===undefined?null:rq.result);
-            rq.onerror = ()=> rej(rq.error);
+            rq.onsuccess = () => res(rq.result === undefined ? null : rq.result);
+            rq.onerror = () => rej(rq.error);
           });
-        }catch(e){
-          try{ const v = localStorage.getItem(key); return v?JSON.parse(v):null; }catch{return null;}
+        } catch (e) {
+          try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
         }
       }
       async function del(key){
-        try{
+        try {
           const db = await openDB();
-          return new Promise((res,rej)=>{
-            const tx = db.transaction(STORE,'readwrite');
+          return new Promise((res, rej) => {
+            const tx = db.transaction(STORE, 'readwrite');
             const s = tx.objectStore(STORE);
             const rq = s.delete(key);
-            rq.onsuccess = ()=> res(true);
-            rq.onerror = ()=> rej(rq.error);
+            rq.onsuccess = () => res(true);
+            rq.onerror = () => rej(rq.error);
           });
-        }catch(e){
-          try{ localStorage.removeItem(key); return true; }catch{return false;}
+        } catch (e) {
+          try { localStorage.removeItem(key); return true; } catch { return false; }
         }
       }
-      return { set,get,del };
+      return { set, get, del };
     })();
-
-    const SLOT_KEY_PREFIX = 'tacops_slot_';
-    let currentSlotSelection = 0;
-    let _pendingOverwriteSlot = null;
-    let _pendingEditSlot = null;
 
     // --- Map / spawn / collision ---
     function initMap(){
@@ -383,20 +391,25 @@
 
     // --- HUD / controls ---
     function updateHUD(){
-      document.getElementById('health').textContent = Math.max(0,Math.floor(health));
-      document.getElementById('weaponName').textContent = weapons[currentWeaponIndex].name;
-      document.getElementById('ammo').textContent = ammo;
-      document.getElementById('maxAmmo').textContent = weapons[currentWeaponIndex].maxAmmo;
-      document.getElementById('kills').textContent = kills;
-      document.getElementById('modeName').textContent = mode;
-      document.getElementById('playerNameLabel').textContent = playerName;
+      const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+      try {
+        setText('health', Math.max(0, Math.floor(health)));
+        setText('weaponName', weapons[currentWeaponIndex] ? weapons[currentWeaponIndex].name : '');
+        setText('ammo', ammo);
+        setText('maxAmmo', weapons[currentWeaponIndex] ? weapons[currentWeaponIndex].maxAmmo : '');
+        setText('kills', kills);
+        setText('modeName', mode);
+        setText('playerNameLabel', playerName);
+        const healCountEl = document.getElementById('healItemsCount');
+        if (healCountEl) healCountEl.textContent = healItems.filter(i => !i.taken).length;
+      } catch (e) { console.warn('updateHUD error (ignored):', e); }
     }
 
     function reload(){
       if(isReloading) return;
       const w = weapons[currentWeaponIndex];
       if(ammo===w.maxAmmo) return;
-      isReloading=true; document.getElementById('ammo').textContent='...';
+      isReloading=true; const ammoEl = document.getElementById('ammo'); if(ammoEl) ammoEl.textContent='...';
       setTimeout(()=>{ ammo=w.maxAmmo; isReloading=false; updateHUD(); }, w.reloadTime);
     }
 
@@ -431,6 +444,11 @@
     }
 
     // --- Save / Load (slot) using Storage wrapper ---
+    const SLOT_KEY_PREFIX = 'tacops_slot_';
+    let currentSlotSelection = 0;
+    let _pendingOverwriteSlot = null;
+    let _pendingEditSlot = null;
+
     async function saveToSlot(slot, force=false, slotName=null){
       const key = SLOT_KEY_PREFIX + slot;
       const existing = await Storage.get(key);
@@ -440,22 +458,19 @@
       }
       const data = {
         player:{x:player.x,y:player.y,z:player.z,yaw:player.yaw,pitch:player.pitch,health,weaponIndex:currentWeaponIndex,ammo},
-        playerName, mode, enemies:enemies.map(e=>({x:e.x,y:e.y,z:e.z,health:e.health,maxHealth:e.maxHealth,type:e.type,color:e.color,lastShot:e.lastShot,walkPhase:e.walkPhase,targetX:e.targetX,targetZ:e.targetZ,state:e.state})),
+        playerName, mode,
+        enemies:enemies.map(e=>({x:e.x,y:e.y,z:e.z,health:e.health,maxHealth:e.maxHealth,type:e.type,color:e.color,lastShot:e.lastShot,walkPhase:e.walkPhase,targetX:e.targetX,targetZ:e.targetZ,state:e.state})),
         healItems:healItems.map(h=>({x:h.x,y:h.y,z:h.z,taken:h.taken,size:h.size,rotation:h.rotation})),
-        walls, waveNumber, savedAt:Date.now(), slotName: slotName ?? (existing?existing.slotName:null)
+        walls, waveNumber, waveEnemyCount, survivalTime:0, speedrunStart, savedAt:Date.now(), slotName: slotName ?? (existing?existing.slotName:null)
       };
-      try{
-        await Storage.set(key,data);
-        updateSlotButtons();
-        return true;
-      }catch(e){ console.error('save slot failed',e); return false; }
+      try{ await Storage.set(key,data); updateSlotButtons(); return true; } catch(e){ console.error('slot save failed',e); return false; }
     }
 
     async function loadFromSlot(slot){
       const key = SLOT_KEY_PREFIX + slot;
-      const data = await Storage.get(key);
-      if(!data){ alert('セーブがありません'); return false; }
-      loadGameFromData(data);
+      const json = await Storage.get(key);
+      if(!json){ alert('セーブがありません'); return false; }
+      loadGameFromData(json);
       return true;
     }
 
@@ -469,9 +484,9 @@
             const date = json.savedAt?new Date(json.savedAt):null;
             const label = json.slotName?json.slotName:(date?date.toLocaleString():'保存済');
             btn.textContent = `Slot ${i}: ${label}`;
-            btn.title='長押しでセーブ / タップで選択 / ダブルタップでロード / 長押し+Altで名前編集';
+            btn.title='長押しでセーブ / タップで選択 / ダブルタップでロード / Alt+クリックで名前編集';
           }
-          if(currentSlotSelection===i) btn.style.outline='3px solid rgba(0,255,120,0.6)'; else btn.style.outline='none';
+          if(currentSlotSelection===i) btn.classList.add('slot-selected'); else btn.classList.remove('slot-selected');
         });
       }
     }
@@ -486,16 +501,16 @@
         if(modal) modal.style.display='flex';
       });
     }
-    function hideOverwriteModal(){ document.getElementById('overwriteModal').style.display='none'; _pendingOverwriteSlot=null; }
+    function hideOverwriteModal(){ const modal = document.getElementById('overwriteModal'); if(modal) modal.style.display='none'; _pendingOverwriteSlot=null; }
 
     function showSlotNameModal(slot){
       _pendingEditSlot = slot;
       const modal = document.getElementById('slotNameModal'); const input = document.getElementById('slotNameInput');
-      Storage.get(SLOT_KEY_PREFIX+slot).then(json=>{ input.value = json? (json.slotName||'') : ''; modal.style.display='flex'; });
+      Storage.get(SLOT_KEY_PREFIX+slot).then(json=>{ if(input) input.value = json? (json.slotName||'') : ''; if(modal) modal.style.display='flex'; });
     }
-    function hideSlotNameModal(){ document.getElementById('slotNameModal').style.display='none'; _pendingEditSlot=null; }
+    function hideSlotNameModal(){ const modal = document.getElementById('slotNameModal'); if(modal) modal.style.display='none'; _pendingEditSlot=null; }
 
-    function applyPlayerName(){ const v = (document.getElementById('playerNameInput').value||'').trim()||'PLAYER'; playerName=v; localStorage.setItem('tacops_playerName',playerName); document.getElementById('playerNameLabel').textContent=playerName; }
+    function applyPlayerName(){ const v = (document.getElementById('playerNameInput').value||'').trim()||'PLAYER'; playerName=v; try{ localStorage.setItem('tacops_playerName',playerName); }catch{} document.getElementById('playerNameLabel').textContent=playerName; }
 
     function saveQuick(){
       const data = { player:{x:player.x,y:player.y,z:player.z,yaw:player.yaw,pitch:player.pitch,health,weaponIndex:currentWeaponIndex,ammo}, playerName, mode, enemies, healItems, walls, waveNumber, savedAt:Date.now() };
@@ -519,9 +534,9 @@
       walls = data.walls || walls;
       waveNumber = data.waveNumber || waveNumber;
       updateHUD();
-      document.getElementById('startScreen').style.display='none';
-      document.getElementById('gameOverScreen').style.display='none';
-      document.getElementById('pauseScreen').style.display='none';
+      const start = document.getElementById('startScreen'); if(start) start.style.display='none';
+      const gameOver = document.getElementById('gameOverScreen'); if(gameOver) gameOver.style.display='none';
+      const pause = document.getElementById('pauseScreen'); if(pause) pause.style.display='none';
       gameRunning = true;
     }
 
@@ -534,7 +549,6 @@
       const dt = Math.min((now - lastTime)/1000, 0.05);
       lastTime = now;
 
-      // update
       if(gameRunning && !isPaused){
         updatePlayer(dt);
         updateEnemies(dt);
@@ -543,11 +557,11 @@
         healSpawnTimer += dt;
         if(healSpawnTimer > 15){ healSpawnTimer = 0; spawnHealItem(); }
 
-        // mode-specific
         if(mode==='WAVE'){
           waveSpawnTimer += dt;
           if(enemies.length===0 && waveSpawnTimer>2){
-            waveNumber++; waveEnemyCount = 3 + waveNumber*2; waveSpawnTimer=0;
+            waveNumber++; waveSpawnTimer=0;
+            const waveEnemyCount = 3 + waveNumber*2;
             for(let i=0;i<waveEnemyCount;i++) spawnEnemy(Math.random()<0.4?'FAST':Math.random()<0.5?'HEAVY':'SHOOTER');
             if(waveNumber%5===0) spawnEnemy('BOSS');
           }
@@ -560,7 +574,6 @@
         }
       }
 
-      // render
       ctx.clearRect(0,0,canvas.width,canvas.height);
       drawFloorAndSky();
       const drawables=[];
@@ -589,14 +602,14 @@
 
     function endGame(){
       gameRunning=false;
-      document.getElementById('gameOverScreen').style.display='flex';
-      document.getElementById('finalText').textContent = `ゲームオーバー — 殺した: ${kills} 人`;
+      const gameOver = document.getElementById('gameOverScreen'); if(gameOver) gameOver.style.display='flex';
+      const finalText = document.getElementById('finalText'); if(finalText) finalText.textContent = `ゲームオーバー — 殺した: ${kills} 人`;
     }
 
     // --- Input: keyboard & pointer & touch ---
     window.addEventListener('keydown', e=>{
       if(e.key==='Escape'){ togglePause(); return; }
-      const k = e.key.toLowerCase();
+      const k = (e.key||'').toLowerCase();
       if(k==='w'||k==='a'||k==='s'||k==='d') keysState[k]=true;
       if(k==='r') reload();
       if(k==='1') { currentWeaponIndex=0; ammo=Math.min(ammo,weapons[0].maxAmmo); updateHUD(); }
@@ -604,67 +617,110 @@
       if(k==='3') { currentWeaponIndex=2; ammo=Math.min(ammo,weapons[2].maxAmmo); updateHUD(); }
       if(k==='4') { currentWeaponIndex=3; ammo=Math.min(ammo,weapons[3].maxAmmo); updateHUD(); }
     });
-    window.addEventListener('keyup', e=>{ const k=e.key.toLowerCase(); if(k in keysState) keysState[k]=false; });
+    window.addEventListener('keyup', e=>{ const k=(e.key||'').toLowerCase(); if(k in keysState) keysState[k]=false; });
 
-    canvas.addEventListener('click', ()=>{ if(!isPointerLocked) canvas.requestPointerLock?.(); if(gameRunning && !isPaused) shoot(); });
+    canvas.addEventListener('click', ()=>{ if(!document.pointerLockElement) canvas.requestPointerLock?.(); if(gameRunning && !isPaused) shoot(); });
+    document.addEventListener('pointerlockchange', ()=>{ /* pointer lock state handled implicitly */ });
+    document.addEventListener('mousemove', e=>{ if(!gameRunning||document.pointerLockElement!==canvas||isPaused) return; player.yaw += (e.movementX||0)*0.003; player.pitch -= (e.movementY||0)*0.003; const limit=Math.PI/2.5; if(player.pitch>limit) player.pitch=limit; if(player.pitch<-limit) player.pitch=-limit; });
 
-    document.addEventListener('pointerlockchange', ()=>{ isPointerLocked = document.pointerLockElement === canvas; });
-    document.addEventListener('mousemove', e=>{ if(!gameRunning||!isPointerLocked||isPaused) return; player.yaw += (e.movementX||0)*0.003; player.pitch -= (e.movementY||0)*0.003; const limit=Math.PI/2.5; if(player.pitch>limit) player.pitch=limit; if(player.pitch<-limit) player.pitch=-limit; });
-
-    // Touch: simple virtual joystick
     (function setupTouch(){
       const joy = document.getElementById('joyLeft');
       let active=false, center=null;
-      joy.addEventListener('touchstart', e=>{ e.preventDefault(); active=true; const r=joy.getBoundingClientRect(); center={x:r.left+r.width/2,y:r.top+r.height/2}; });
-      joy.addEventListener('touchmove', e=>{ e.preventDefault(); if(!active) return; const t=e.touches[0]; const dx=(t.clientX-center.x)/(joy.clientWidth/2); const dy=(t.clientY-center.y)/(joy.clientHeight/2); keysState.w = dy < -0.35; keysState.s = dy > 0.35; keysState.a = dx < -0.35; keysState.d = dx > 0.35; });
-      joy.addEventListener('touchend', e=>{ e.preventDefault(); active=false; keysState.w=keysState.a=keysState.s=keysState.d=false; });
-      document.getElementById('fireBtn').addEventListener('touchstart', e=>{ e.preventDefault(); shoot(); });
-      document.getElementById('reloadBtn').addEventListener('touchstart', e=>{ e.preventDefault(); reload(); });
+      if(joy){
+        joy.addEventListener('touchstart', e=>{ e.preventDefault(); active=true; const r=joy.getBoundingClientRect(); center={x:r.left+r.width/2,y:r.top+r.height/2}; });
+        joy.addEventListener('touchmove', e=>{ e.preventDefault(); if(!active) return; const t=e.touches[0]; const dx=(t.clientX-center.x)/(joy.clientWidth/2); const dy=(t.clientY-center.y)/(joy.clientHeight/2); keysState.w = dy < -0.35; keysState.s = dy > 0.35; keysState.a = dx < -0.35; keysState.d = dx > 0.35; });
+        joy.addEventListener('touchend', e=>{ e.preventDefault(); active=false; keysState.w=keysState.a=keysState.s=keysState.d=false; });
+      }
+      const fireBtn = document.getElementById('fireBtn'); if(fireBtn) fireBtn.addEventListener('touchstart', e=>{ e.preventDefault(); shoot(); });
+      const reloadBtn = document.getElementById('reloadBtn'); if(reloadBtn) reloadBtn.addEventListener('touchstart', e=>{ e.preventDefault(); reload(); });
     })();
 
-    // --- UI wiring ---
-    document.getElementById('startNormal').addEventListener('click', ()=>{ startGame('NORMAL'); });
-    document.getElementById('startSpeedrun').addEventListener('click', ()=>{ startGame('SPEEDRUN'); });
-    document.getElementById('startSurvival').addEventListener('click', ()=>{ startGame('SURVIVAL'); });
-    document.getElementById('startWave').addEventListener('click', ()=>{ startGame('WAVE'); });
-    document.getElementById('startPractice').addEventListener('click', ()=>{ startGame('PRACTICE'); });
+    // --- UI wiring (slot buttons / modals / autosave / start buttons) ---
+    (function wireUI(){
+      // player name input
+      const pInput = document.getElementById('playerNameInput');
+      if (pInput) pInput.addEventListener('change', applyPlayerName);
 
-    document.getElementById('playerNameInput').addEventListener('change', ()=>{ applyPlayerName(); });
+      // slot buttons
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById('slotBtn' + i);
+        if (!btn) continue;
+        let pressTimer = null, lastTap = 0;
+        btn.addEventListener('touchstart', e => { e.preventDefault(); pressTimer = setTimeout(()=>{ saveToSlot(i, true).then(()=>{ updateSlotButtons(); alert('Slot ' + i + ' にセーブしました'); }); }, 600); });
+        btn.addEventListener('touchend', e => { e.preventDefault(); if (pressTimer) clearTimeout(pressTimer); const now = Date.now(); if (now - lastTap < 350) { loadFromSlot(i); } else { currentSlotSelection = i; updateSlotButtons(); } lastTap = now; });
+        btn.addEventListener('click', e => { if (e.altKey) { showSlotNameModal(i); } else { currentSlotSelection = i; updateSlotButtons(); } });
+        btn.addEventListener('dblclick', () => loadFromSlot(i));
+        btn.addEventListener('contextmenu', e => { e.preventDefault(); saveToSlot(i, true).then(()=>{ updateSlotButtons(); alert('Slot ' + i + ' にセーブしました'); }); });
+      }
 
-    // slot buttons: tap to select, double-tap to load, long-press to save
-    for(let i=1;i<=3;i++){
-      const btn = document.getElementById('slotBtn'+i);
-      let pressTimer=null, lastTap=0;
-      btn.addEventListener('touchstart', e=>{ e.preventDefault(); pressTimer = setTimeout(()=>{ saveToSlot(i,true).then(()=>{ updateSlotButtons(); alert('Slot '+i+' にセーブしました'); }); }, 600); });
-      btn.addEventListener('touchend', e=>{ e.preventDefault(); if(pressTimer) clearTimeout(pressTimer); const now=Date.now(); if(now-lastTap<350){ loadFromSlot(i); } else { currentSlotSelection=i; updateSlotButtons(); } lastTap=now; });
-      btn.addEventListener('click', e=>{ if(e.altKey){ showSlotNameModal(i); } else { currentSlotSelection=i; updateSlotButtons(); } });
-      btn.addEventListener('dblclick', ()=> loadFromSlot(i));
-      btn.addEventListener('contextmenu', e=>{ e.preventDefault(); saveToSlot(i,true).then(()=>{ updateSlotButtons(); alert('Slot '+i+' にセーブしました'); }); });
-    }
+      // overwrite modal
+      const overwriteConfirm = document.getElementById('overwriteConfirm');
+      const overwriteCancel = document.getElementById('overwriteCancel');
+      if (overwriteConfirm) overwriteConfirm.addEventListener('click', () => { if (_pendingOverwriteSlot) { saveToSlot(_pendingOverwriteSlot, true).then(()=>{ updateSlotButtons(); alert('上書き保存しました'); }); } hideOverwriteModal(); });
+      if (overwriteCancel) overwriteCancel.addEventListener('click', hideOverwriteModal);
 
-    document.getElementById('overwriteConfirm').addEventListener('click', ()=>{ if(_pendingOverwriteSlot){ saveToSlot(_pendingOverwriteSlot,true).then(()=>{ updateSlotButtons(); alert('上書き保存しました'); }); } hideOverwriteModal(); });
-    document.getElementById('overwriteCancel').addEventListener('click', hideOverwriteModal);
+      // slot name modal
+      const slotNameSave = document.getElementById('slotNameSave');
+      const slotNameCancel = document.getElementById('slotNameCancel');
+      if (slotNameSave) slotNameSave.addEventListener('click', async () => {
+        const input = document.getElementById('slotNameInput');
+        if (!_pendingEditSlot) { hideSlotNameModal(); return; }
+        const name = input ? input.value.trim() : "";
+        const key = SLOT_KEY_PREFIX + _pendingEditSlot;
+        const json = await Storage.get(key);
+        if (!json) { await saveToSlot(_pendingEditSlot, true, name); }
+        else { json.slotName = name; await Storage.set(key, json); }
+        updateSlotButtons(); hideSlotNameModal();
+      });
+      if (slotNameCancel) slotNameCancel.addEventListener('click', hideSlotNameModal);
 
-    document.getElementById('slotNameSave').addEventListener('click', async ()=>{
-      const input = document.getElementById('slotNameInput'); if(!_pendingEditSlot) return hideSlotNameModal();
-      const name = input.value.trim();
-      const key = SLOT_KEY_PREFIX + _pendingEditSlot;
-      const existing = await Storage.get(key);
-      if(!existing){ await saveToSlot(_pendingEditSlot,true,name); } else { existing.slotName = name; await Storage.set(key,existing); }
-      updateSlotButtons(); hideSlotNameModal();
-    });
-    document.getElementById('slotNameCancel').addEventListener('click', hideSlotNameModal);
+      // pause buttons
+      const pauseSaveBtn = document.getElementById('pauseSaveBtn');
+      if (pauseSaveBtn) pauseSaveBtn.addEventListener('click', () => {
+        if (currentSlotSelection >= 1 && currentSlotSelection <= 3) {
+          saveToSlot(currentSlotSelection, true).then(()=>{ updateSlotButtons(); alert('選択スロットにセーブしました'); });
+        } else saveQuick();
+      });
+      const pauseLoadBtn = document.getElementById('pauseLoadBtn');
+      if (pauseLoadBtn) pauseLoadBtn.addEventListener('click', () => {
+        if (currentSlotSelection >= 1 && currentSlotSelection <= 3) loadFromSlot(currentSlotSelection);
+        else loadQuick();
+      });
 
-    document.getElementById('pauseSaveBtn').addEventListener('click', ()=>{ if(currentSlotSelection>=1&&currentSlotSelection<=3) saveToSlot(currentSlotSelection,true).then(()=>{ updateSlotButtons(); alert('選択スロットにセーブしました'); }); else saveQuick(); });
-    document.getElementById('pauseLoadBtn').addEventListener('click', ()=>{ if(currentSlotSelection>=1&&currentSlotSelection<=3) loadFromSlot(currentSlotSelection); else loadQuick(); });
-    document.getElementById('pauseResumeBtn').addEventListener('click', ()=>{ togglePause(); });
-    document.getElementById('pauseTitleBtn').addEventListener('click', ()=>{ document.getElementById('pauseScreen').style.display='none'; document.getElementById('startScreen').style.display='flex'; gameRunning=false; resetGameState(); });
+      const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+      if (pauseResumeBtn) pauseResumeBtn.addEventListener('click', () => { togglePause(); });
 
-    document.getElementById('restartBtn').addEventListener('click', ()=>{ startGame(mode); });
-    document.getElementById('backToTitleBtn').addEventListener('click', ()=>{ document.getElementById('gameOverScreen').style.display='none'; document.getElementById('startScreen').style.display='flex'; gameRunning=false; resetGameState(); });
+      const pauseTitleBtn = document.getElementById('pauseTitleBtn');
+      if (pauseTitleBtn) pauseTitleBtn.addEventListener('click', () => { document.getElementById('pauseScreen').style.display = 'none'; document.getElementById('startScreen').style.display = 'flex'; gameRunning = false; resetGameState(); });
 
-    document.getElementById('autosaveToggle').checked = localStorage.getItem('tacops_autosave')==='1';
-    document.getElementById('autosaveToggle').addEventListener('change', e=> localStorage.setItem('tacops_autosave', e.target.checked ? '1' : '0'));
+      // start / restart / back to title
+      const startNormal = document.getElementById('startNormal');
+      if (startNormal) startNormal.addEventListener('click', () => { applyPlayerName(); startGame('NORMAL'); });
+      const startSpeed = document.getElementById('startSpeedrun');
+      if (startSpeed) startSpeed.addEventListener('click', () => { applyPlayerName(); startGame('SPEEDRUN'); });
+      const startSurv = document.getElementById('startSurvival');
+      if (startSurv) startSurv.addEventListener('click', () => { applyPlayerName(); startGame('SURVIVAL'); });
+      const startWave = document.getElementById('startWave');
+      if (startWave) startWave.addEventListener('click', () => { applyPlayerName(); startGame('WAVE'); });
+      const startPractice = document.getElementById('startPractice');
+      if (startPractice) startPractice.addEventListener('click', () => { applyPlayerName(); startGame('PRACTICE'); });
+
+      const restartBtn = document.getElementById('restartBtn');
+      if (restartBtn) restartBtn.addEventListener('click', () => { startGame(mode); });
+      const backToTitleBtn = document.getElementById('backToTitleBtn');
+      if (backToTitleBtn) backToTitleBtn.addEventListener('click', () => { document.getElementById('gameOverScreen').style.display='none'; document.getElementById('startScreen').style.display='flex'; gameRunning=false; resetGameState(); });
+
+      // autosave toggle
+      const autosaveToggle = document.getElementById('autosaveToggle');
+      if (autosaveToggle) {
+        autosaveToggle.checked = localStorage.getItem('tacops_autosave') === '1';
+        autosaveToggle.addEventListener('change', e => localStorage.setItem('tacops_autosave', e.target.checked ? '1' : '0'));
+      }
+
+      // initial update
+      updateSlotButtons();
+      updateHUD();
+    })();
 
     // --- Game control helpers ---
     function startGame(selectedMode){
@@ -673,10 +729,9 @@
       projectiles=[]; enemies=[]; healItems=[]; healSpawnTimer=0; waveNumber=1; waveSpawnTimer=0;
       player.x=0; player.z=0; player.yaw=0; player.pitch=0;
       initMap(); updateSlotButtons(); updateHUD();
-      document.getElementById('startScreen').style.display='none';
-      document.getElementById('gameOverScreen').style.display='none';
+      const start = document.getElementById('startScreen'); if(start) start.style.display='none';
+      const gameOver = document.getElementById('gameOverScreen'); if(gameOver) gameOver.style.display='none';
       gameRunning=true;
-      // initial spawn
       if(mode==='NORMAL'){ for(let i=0;i<6;i++) spawnEnemy('NORMAL'); }
       else if(mode==='SPEEDRUN'){ speedrunStart=performance.now(); for(let i=0;i<8;i++) spawnEnemy('FAST'); }
       else if(mode==='SURVIVAL'){ survivalStart=performance.now(); for(let i=0;i<4;i++) spawnEnemy('NORMAL'); }
@@ -689,19 +744,20 @@
 
     function togglePause(){
       isPaused = !isPaused;
-      document.getElementById('pauseScreen').style.display = isPaused ? 'flex' : 'none';
+      const pauseScreen = document.getElementById('pauseScreen');
+      if(pauseScreen) pauseScreen.style.display = isPaused ? 'flex' : 'none';
       if(isPaused){
         const autosave = localStorage.getItem('tacops_autosave')==='1';
         if(autosave && currentSlotSelection>=1 && currentSlotSelection<=3) saveToSlot(currentSlotSelection,true).then(()=>updateSlotButtons());
       } else { requestAnimationFrame(gameLoop); }
     }
 
-    // --- Initialization ---
+    // --- Start initial frame ---
     updateSlotButtons();
     updateHUD();
     requestAnimationFrame(gameLoop);
 
-    // Expose some helpers for debugging
+    // Expose helpers for debugging
     window.tacops = { startGame, saveToSlot, loadFromSlot, saveQuick, loadQuick, updateSlotButtons };
 
   })();
